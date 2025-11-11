@@ -15,7 +15,10 @@ lazy val root = project
       Seq(
         "com.lihaoyi" % "ammonite" % version % "test" cross CrossVersion.full,
         "org.scalameta" %% "munit" % "1.0.0" % Test,
-        "io.circe" %% "circe-config" % "0.10.0"
+        "io.circe" %% "circe-config" % "0.10.0",
+        "org.typelevel" %% "cats-effect" % "3.5.4",
+        "co.fs2" %% "fs2-core" % "3.10.2",
+        "co.fs2" %% "fs2-io" % "3.10.2"
       )
     },
     sourceGenerators in Test += Def.task {
