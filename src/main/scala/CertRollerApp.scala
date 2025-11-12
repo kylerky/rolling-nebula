@@ -5,6 +5,8 @@ import cats.implicits._
 import fs2.io.file.Path
 import com.monovore.decline.Opts
 import com.nebula.rolling.util.BaseApp
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 object CertRollerApp
     extends BaseApp(
