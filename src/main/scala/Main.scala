@@ -8,10 +8,9 @@ import java.io.File
 object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
     val baseDir = args.headOption.map(Path(_)).getOrElse(Path(System.getProperty("user.dir")))
-    val pubDir = baseDir / "pub"
-
     (for {
       config <- ConfigLoader.load()
+      pubDir = baseDir / config.pubDir
       outputDir <- FileSystem.createOutputDirectory(baseDir)
       _ <- IO.println(s"Created output directory: $outputDir")
       _ <- NebulaCert.generateCA(config.caName, outputDir)

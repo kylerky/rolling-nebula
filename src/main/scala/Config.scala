@@ -6,7 +6,7 @@ import io.circe.config.parser
 import com.typesafe.config.{Config, ConfigFactory}
 
 case class HostConfig(name: String, ip: String, groups: List[String])
-case class AppConfig(caName: String, hosts: Map[String, HostConfig])
+case class AppConfig(caName: String, pubDir: String, hosts: Map[String, HostConfig])
 
 object ConfigLoader {
   def load(config: Config = ConfigFactory.load()): IO[AppConfig] = {
