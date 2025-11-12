@@ -6,10 +6,19 @@ import io.circe.config.parser
 import com.typesafe.config.{Config, ConfigFactory}
 
 case class HostConfig(name: String, ip: String, groups: List[String])
-case class AppConfig(caName: String, pubDir: String, hosts: Map[String, HostConfig])
+
+// Cert Roller Configuration
+case class CertRollerConfig(caName: String, pubDir: String, hosts: Map[String, HostConfig])
+
+// Config Server Configuration
+case class ConfigServerConfig(host: String, port: Int, templatePath: String)
 
 object ConfigLoader {
-  def load(config: Config = ConfigFactory.load()): IO[AppConfig] = {
-    parser.decodeF[IO, AppConfig](config)
+  def loadCertRollerConfig(config: Config = ConfigFactory.load()): IO[CertRollerConfig] = {
+    parser.decodeF[IO, CertRollerConfig](config.getConfig("cert-roller"))
+  }
+
+  def loadConfigServerConfig(config: Config = ConfigFactory.load()): IO[ConfigServerConfig] = {
+    parser.decodeF[IO, ConfigServerConfig](config.getConfig("config-server"))
   }
 }
