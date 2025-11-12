@@ -8,19 +8,21 @@ import com.monovore.decline.effect.CommandIOApp
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.typelevel.log4cats.Logger
 
-object CertRollerApp extends CommandIOApp(
-  name = "cert-roller",
-  header = "Nebula Certificate Roller - Generates CA and signs host certificates."
-) {
+object CertRollerApp
+    extends CommandIOApp(
+      name = "cert-roller",
+      header =
+        "Nebula Certificate Roller - Generates CA and signs host certificates."
+    ) {
   implicit val logger: Logger[IO] = Slf4jLogger.getLogger[IO]
 
-  val baseDirOpt: Opts[Path] = Opts.argument[String]("base-directory")
+  val baseDirOpt: Opts[Path] = Opts
+    .argument[String]("base-directory")
     .withDefault(System.getProperty("user.dir"))
     .map(Path(_))
-    .withHelp("Base directory for operations (e.g., where 'pubs' and 'config_YYYY-MM-DD' will be created).")
 
   override def main: Opts[IO[ExitCode]] = baseDirOpt.map { baseDir =>
-    for {
+    val roller = for {
       config <- ConfigLoader.loadCertRollerConfig()
       pubDir = baseDir / config.pubDir
       outputDir <- FileSystem.createOutputDirectory(baseDir)
@@ -40,11 +42,17 @@ object CertRollerApp extends CommandIOApp(
               outputDir = outputDir
             ) *> logger.info(s"Signed certificate for $hostName.")
           case None =>
-            logger.warn(s"No configuration found for host '$hostName'. Skipping.")
+            logger.warn(
+              s"No configuration found for host '$hostName'. Skipping."
+            )
         }
       }
     } yield ExitCode.Success
-  }.handleErrorWith { err =>
-    logger.error(err)(s"An error occurred: ${err.getMessage}") *> IO(ExitCode.Error)
+
+    roller.handleErrorWith { err =>
+      logger.error(err)(s"An error occurred: ${err.getMessage}") *> IO(
+        ExitCode.Error
+      )
+    }
   }
 }
