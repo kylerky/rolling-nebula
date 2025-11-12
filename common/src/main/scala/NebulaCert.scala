@@ -37,7 +37,8 @@ object NebulaCert {
     val hostName = pubKey.fileName.toString.stripSuffix(".pub")
     val certsDir = outputDir / "certs"
     val certFile = certsDir / s"$hostName.crt"
-    val linkFile = certsDir / s"${hostConfig.ip}.crt"
+    val ipWithoutCidr = hostConfig.ip.split('/').head // Remove CIDR suffix
+    val linkFile = certsDir / s"$ipWithoutCidr.crt"
 
     for {
       _ <- Files[IO].createDirectories(certsDir)
