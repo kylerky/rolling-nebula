@@ -39,7 +39,7 @@ object NebulaCert {
       "-name", hostConfig.name,
       "-ip", hostConfig.ip,
       "-groups", hostConfig.groups.mkString(","),
-      "-out-crt", (outputDir / s"$hostName.crt").toString
+      "-out-crt", (outputDir / "certs" / s"$hostName.crt").toString
     )
     val result = command.!!
     println(s"Signing result for $hostName: $result")

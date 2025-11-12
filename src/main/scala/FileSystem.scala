@@ -13,6 +13,7 @@ object FileSystem {
     today <- IO(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
     outputDir = baseDir.resolve(s"config_$today")
     _ <- Files[IO].createDirectories(outputDir)
+    _ <- Files[IO].createDirectories(outputDir / "certs")
   } yield outputDir
 
   def getPublicKeyFiles(pubDir: Path): Stream[IO, Path] = {
