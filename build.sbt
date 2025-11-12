@@ -1,5 +1,15 @@
 val scala3Version = "3.7.3"
 
+val http4sVersion = "0.23.25"
+val tapirVersion = "1.9.10"
+val declineVersion = "2.4.1"
+val log4catsVersion = "2.6.0"
+val circeVersion = "0.14.6" // For circe-generic
+val circeYamlVersion = "0.15.1"
+val catsEffectVersion = "3.5.4"
+val fs2Version = "3.10.2"
+val slf4jVersion = "2.0.9"
+
 lazy val root = project
   .in(file("."))
   .settings(
@@ -15,11 +25,19 @@ lazy val root = project
       Seq(
         "com.lihaoyi" % "ammonite" % version % "test" cross CrossVersion.full,
         "org.scalameta" %% "munit" % "1.0.0" % Test,
-        "io.circe" %% "circe-config" % "0.10.0",
-        "org.typelevel" %% "cats-effect" % "3.5.4",
-        "co.fs2" %% "fs2-core" % "3.10.2",
-        "co.fs2" %% "fs2-io" % "3.10.2",
-        "io.circe" %% "circe-generic" % "0.14.6"
+        "io.circe" %% "circe-config" % "0.10.0", // circe-config has its own versioning
+        "org.typelevel" %% "cats-effect" % catsEffectVersion,
+        "co.fs2" %% "fs2-core" % fs2Version,
+        "co.fs2" %% "fs2-io" % fs2Version,
+        "io.circe" %% "circe-generic" % circeVersion,
+        "org.http4s" %% "http4s-ember-server" % http4sVersion,
+        "org.http4s" %% "http4s-dsl" % http4sVersion,
+        "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % tapirVersion,
+        "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % tapirVersion,
+        "com.monovore" %% "decline-effect" % declineVersion,
+        "org.typelevel" %% "log4cats-slf4j" % log4catsVersion,
+        "org.slf4j" % "slf4j-simple" % slf4jVersion,
+        "io.circe" %% "circe-yaml" % circeYamlVersion
       )
     },
     sourceGenerators in Test += Def.task {
