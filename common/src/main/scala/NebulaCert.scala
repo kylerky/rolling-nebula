@@ -1,7 +1,7 @@
 package com.nebula.rolling
 
 import cats.effect.IO
-import fs2.io.file.Path
+import fs2.io.file.{Files, Path}
 import scala.sys.process._
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -33,27 +33,37 @@ object NebulaCert {
       pubKey: Path,
       hostConfig: HostConfig,
       outputDir: Path
-  ): IO[Unit] = IO {
+  ): IO[Unit] = {
     val hostName = pubKey.fileName.toString.stripSuffix(".pub")
-    val command = Seq(
-      "nebula-cert",
-      "sign",
-      "-ca-crt",
-      caCrt.toString,
-      "-ca-key",
-      caKey.toString,
-      "-in-pub",
-      pubKey.toString,
-      "-name",
-      hostConfig.name,
-      "-ip",
-      hostConfig.ip,
-      "-groups",
-      hostConfig.groups.mkString(","),
-      "-out-crt",
-      (outputDir / "certs" / s"$hostName.crt").toString
-    )
-    val result = command.!!
-    println(s"Signing result for $hostName: $result")
+    val certsDir = outputDir / "certs"
+    val certFile = certsDir / s"$hostName.crt"
+    val linkFile = certsDir / s"${hostConfig.ip}.crt"
+
+    for {
+      _ <- Files[IO].createDirectories(certsDir)
+      _ <- IO {
+        val command = Seq(
+          "nebula-cert",
+          "sign",
+          "-ca-crt",
+          caCrt.toString,
+          "-ca-key",
+          caKey.toString,
+          "-in-pub",
+          pubKey.toString,
+          "-name",
+          hostConfig.name,
+          "-ip",
+          hostConfig.ip,
+          "-groups",
+          hostConfig.groups.mkString(","),
+          "-out-crt",
+          certFile.toString
+        )
+        val result = command.!!
+        println(s"Signing result for $hostName: $result")
+      }
+      _ <- Files[IO].createSymbolicLink(linkFile, certFile)
+    } yield ()
   }
 }
