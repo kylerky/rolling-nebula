@@ -17,6 +17,7 @@ object FileSystem {
 
   def getPublicKeyFiles(pubDir: Path): Stream[IO, Path] = {
     Files[IO].walk(pubDir)
-      .filter(p => p.toString.endsWith(pubKeyExtension) && !Files[IO].isDirectory(p))
+      .filter(p => p.toString.endsWith(pubKeyExtension))
+      .evalFilter(p => Files[IO].isDirectory(p).map(!_))
   }
 }
