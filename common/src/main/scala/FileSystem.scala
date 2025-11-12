@@ -1,4 +1,4 @@
-package com.nebula.rolling
+package com.teecertlabs.nebula.rolling
 
 import cats.effect.IO
 import fs2.io.file.{Files, Path}

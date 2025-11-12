@@ -1,4 +1,4 @@
-package com.nebula.rolling
+package com.teecertlabs.nebula.rolling
 
 import cats.effect.IO
 import io.circe.generic.auto._

@@ -81,7 +81,7 @@ lazy val certRoller = (project in file("cert-roller"))
   .settings(
     name := "nebula-cert-roller",
     commonSettings,
-    Compile / mainClass := Some("com.nebula.rolling.CertRollerApp"),
+    Compile / mainClass := Some("com.teecertlabs.nebula.rolling.CertRollerApp"),
     executableScriptName := "nebula-cert-roller"
   )
 
@@ -91,6 +91,6 @@ lazy val configServer = (project in file("config-server"))
   .settings(
     name := "nebula-config-server",
     commonSettings,
-    Compile / mainClass := Some("com.nebula.rolling.server.ConfigServerApp"),
+    Compile / mainClass := Some("com.teecertlabs.nebula.rolling.server.ConfigServerApp"),
     executableScriptName := "nebula-config-server"
   )

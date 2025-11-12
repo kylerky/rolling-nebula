@@ -1,4 +1,4 @@
-package com.nebula.rolling.server
+package com.teecertlabs.nebula.rolling.server
 
 import sttp.tapir._
 import java.net.InetSocketAddress

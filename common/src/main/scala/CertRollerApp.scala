@@ -1,10 +1,10 @@
-package com.nebula.rolling
+package com.teecertlabs.nebula.rolling
 
 import cats.effect.{IO, ExitCode}
 import cats.implicits._
 import fs2.io.file.Path
 import com.monovore.decline.Opts
-import com.nebula.rolling.util.BaseApp
+import com.teecertlabs.nebula.rolling.util.BaseApp
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 

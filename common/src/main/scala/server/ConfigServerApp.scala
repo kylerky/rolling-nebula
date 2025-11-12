@@ -1,12 +1,12 @@
-package com.nebula.rolling.server
+package com.teecertlabs.nebula.rolling.server
 
 import cats.effect.{IO, ExitCode}
 import cats.implicits._
 import com.monovore.decline.Opts
-import com.nebula.rolling.util.BaseApp
+import com.teecertlabs.nebula.rolling.util.BaseApp
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import com.nebula.rolling.ConfigLoader
+import com.teecertlabs.nebula.rolling.ConfigLoader
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.middleware.Logger as Http4sLogger
 import sttp.tapir.server.http4s.Http4sServerInterpreter

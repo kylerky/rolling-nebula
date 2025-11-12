@@ -1,4 +1,4 @@
-package com.nebula.rolling.util
+package com.teecertlabs.nebula.rolling.util
 
 import cats.effect.{IO, ExitCode}
 import com.monovore.decline.Opts

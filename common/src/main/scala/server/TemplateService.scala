@@ -1,8 +1,8 @@
-package com.nebula.rolling.server
+package com.teecertlabs.nebula.rolling.server
 
 import cats.effect.IO
 import cats.implicits._
-import com.nebula.rolling.ConfigServerConfig
+import com.teecertlabs.nebula.rolling.ConfigServerConfig
 import fs2.io.file.{Files, Path}
 import fs2.Stream
 import io.circe.Json
