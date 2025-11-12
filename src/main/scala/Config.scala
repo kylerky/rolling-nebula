@@ -11,7 +11,14 @@ case class HostConfig(name: String, ip: String, groups: List[String])
 case class CertRollerConfig(caName: String, pubDir: String, hosts: Map[String, HostConfig])
 
 // Config Server Configuration
-case class ConfigServerConfig(host: String, port: Int, templatePath: String)
+case class ConfigServerConfig(
+  host: String,
+  port: Int,
+  templatePath: String,
+  pkiKeyPath: String,
+  configDir: String,
+  labServerInboundGroups: List[String]
+)
 
 object ConfigLoader {
   def loadCertRollerConfig(config: Config = ConfigFactory.load()): IO[CertRollerConfig] = {
