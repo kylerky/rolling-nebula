@@ -14,32 +14,44 @@ object NebulaCert {
     val caName = s"$baseCaName-$today"
 
     val command = Seq(
-      "nebula-cert", "ca",
-      "-name", caName,
-      "-out-crt", (outputDir / "ca.crt").toString,
-      "-out-key", (outputDir / "ca.key").toString
+      "nebula-cert",
+      "ca",
+      "-name",
+      caName,
+      "-out-crt",
+      (outputDir / "ca.crt").toString,
+      "-out-key",
+      (outputDir / "ca.key").toString
     )
     val result = command.!!
     println(s"CA generation result: $result")
   }
 
   def signHostKey(
-    caCrt: Path,
-    caKey: Path,
-    pubKey: Path,
-    hostConfig: HostConfig,
-    outputDir: Path
+      caCrt: Path,
+      caKey: Path,
+      pubKey: Path,
+      hostConfig: HostConfig,
+      outputDir: Path
   ): IO[Unit] = IO {
     val hostName = pubKey.fileName.toString.stripSuffix(".pub")
     val command = Seq(
-      "nebula-cert", "sign",
-      "-ca-crt", caCrt.toString,
-      "-ca-key", caKey.toString,
-      "-in-pub", pubKey.toString,
-      "-name", hostConfig.name,
-      "-ip", hostConfig.ip,
-      "-groups", hostConfig.groups.mkString(","),
-      "-out-crt", (outputDir / "certs" / s"$hostName.crt").toString
+      "nebula-cert",
+      "sign",
+      "-ca-crt",
+      caCrt.toString,
+      "-ca-key",
+      caKey.toString,
+      "-in-pub",
+      pubKey.toString,
+      "-name",
+      hostConfig.name,
+      "-ip",
+      hostConfig.ip,
+      "-groups",
+      hostConfig.groups.mkString(","),
+      "-out-crt",
+      (outputDir / "certs" / s"$hostName.crt").toString
     )
     val result = command.!!
     println(s"Signing result for $hostName: $result")
