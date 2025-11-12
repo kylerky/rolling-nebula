@@ -5,7 +5,7 @@ import io.circe.generic.auto._
 import io.circe.config.parser
 
 case class HostConfig(name: String, ip: String, groups: List[String])
-case class AppConfig(hosts: Map[String, HostConfig])
+case class AppConfig(caName: String, hosts: Map[String, HostConfig])
 
 object ConfigLoader {
   def load(): IO[AppConfig] = {
