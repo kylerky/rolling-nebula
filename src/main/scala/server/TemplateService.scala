@@ -125,7 +125,7 @@ class TemplateService(config: ConfigServerConfig) {
       clientIp: Option[InetSocketAddress],
       firewallType: String
   ): IO[Either[String, String]] = {
-    clientIp.map(_.ip.toString) match {
+    clientIp.map(_.getAddress.getHostAddress) match {
       case Some(ip) =>
         generateConfig(ip, firewallType).attempt.map(_.leftMap(_.getMessage))
       case None => IO.pure(Left("Could not determine client IP address."))

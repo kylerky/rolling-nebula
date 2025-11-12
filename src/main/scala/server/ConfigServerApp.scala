@@ -1,23 +1,13 @@
-package com.nebula.rolling.server
-
-import cats.effect.{IO, ExitCode}
-import cats.implicits._
-import com.monovore.decline.Opts
-import com.monovore.decline.effect.CommandIOApp
-import org.typelevel.log4cats.slf4j.Slf4jLogger
-import org.typelevel.log4cats.Logger
-import com.nebula.rolling.ConfigLoader
-import org.http4s.ember.server.EmberServerBuilder
-import org.http4s.server.middleware.Logger as Http4sLogger
-import sttp.tapir.server.http4s.Http4sServerInterpreter
+import com.nebula.rolling.util.BaseApp
 
 object ConfigServerApp
-    extends CommandIOApp(
+    extends BaseApp(
       name = "config-server",
       header =
         "Nebula Configuration Server - Serves dynamic Nebula configurations."
     ) {
-  implicit val logger: Logger[IO] = Slf4jLogger.getLogger[IO]
+  override protected implicit def logger: Logger[IO] = Slf4jLogger.getLogger[IO]
+  implicit val asyncIO: Async[IO] = IO.asyncForIO // Provide Async[IO] explicitly
 
   val portOpt: Opts[Option[Int]] = Opts
     .option[Int]("port", short = "p", help = "Port to bind the server to.")
@@ -26,28 +16,35 @@ object ConfigServerApp
     .option[String]("host", short = "h", help = "Host to bind the server to.")
     .orNone
 
-  override def main: Opts[IO[ExitCode]] = (portOpt, hostOpt).mapN {
+  override def app: Opts[IO[ExitCode]] = (portOpt, hostOpt).mapN {
     (cliPortOpt, cliHostOpt) =>
-      val server = for {
+      for {
         config <- ConfigLoader.loadConfigServerConfig()
-        serverHost = cliHostOpt.getOrElse(config.host)
-        serverPort = cliPortOpt.getOrElse(config.port)
+        serverHostStr = cliHostOpt.getOrElse(config.host)
+        serverPortInt = cliPortOpt.getOrElse(config.port)
 
-        http4sPort <- IO.fromOption(org.http4s.Uri.Port.fromInt(serverPort))(
-          new IllegalArgumentException(
-            s"Invalid port number specified: $serverPort"
+        serverHost <- Host
+          .fromString(serverHostStr)
+          .liftTo[IO](
+            new IllegalArgumentException(s"Invalid host specified: $serverHostStr")
           )
-        )
+        http4sPort <- Port
+          .fromInt(serverPortInt)
+          .liftTo[IO](
+            new IllegalArgumentException(
+              s"Invalid port number specified: $serverPortInt"
+            )
+          )
 
-        templateService = new TemplateService(config.templatePath)
+        templateService = new TemplateService(config)
 
         // Define Tapir routes
-        labServerRoute = Http4sServerInterpreter[IO]().toHttpRoutes(
+        labServerRoute = Http4sServerInterpreter[IO]().toRoutes(
           Endpoints.labServerEndpoint.serverLogic(
             templateService.getLabServerConfig
           )
         )
-        defaultRoute = Http4sServerInterpreter[IO]().toHttpRoutes(
+        defaultRoute = Http4sServerInterpreter[IO]().toRoutes(
           Endpoints.defaultEndpoint.serverLogic(
             templateService.getDefaultConfig
           )
@@ -73,11 +70,5 @@ object ConfigServerApp
               IO.never // Keep the server running indefinitely
           }
       } yield ExitCode.Success
-
-      server.handleErrorWith { err =>
-        logger.error(err)(s"An error occurred: ${err.getMessage}") *> IO(
-          ExitCode.Error
-        )
-      }
   }
 }

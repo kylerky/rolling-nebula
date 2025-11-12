@@ -4,25 +4,23 @@ import cats.effect.{IO, ExitCode}
 import cats.implicits._
 import fs2.io.file.Path
 import com.monovore.decline.Opts
-import com.monovore.decline.effect.CommandIOApp
-import org.typelevel.log4cats.slf4j.Slf4jLogger
-import org.typelevel.log4cats.Logger
+import com.nebula.rolling.util.BaseApp
 
 object CertRollerApp
-    extends CommandIOApp(
+    extends BaseApp(
       name = "cert-roller",
       header =
         "Nebula Certificate Roller - Generates CA and signs host certificates."
     ) {
-  implicit val logger: Logger[IO] = Slf4jLogger.getLogger[IO]
+  override protected implicit def logger: Logger[IO] = Slf4jLogger.getLogger[IO]
 
   val baseDirOpt: Opts[Path] = Opts
-    .argument[String]("base-directory")
+    .argument[String](metavar = "base-directory")
     .withDefault(System.getProperty("user.dir"))
     .map(Path(_))
 
-  override def main: Opts[IO[ExitCode]] = baseDirOpt.map { baseDir =>
-    val roller = for {
+  override def app: Opts[IO[ExitCode]] = baseDirOpt.map { baseDir =>
+    for {
       config <- ConfigLoader.loadCertRollerConfig()
       pubDir = baseDir / config.pubDir
       outputDir <- FileSystem.createOutputDirectory(baseDir)
@@ -48,11 +46,5 @@ object CertRollerApp
         }
       }
     } yield ExitCode.Success
-
-    roller.handleErrorWith { err =>
-      logger.error(err)(s"An error occurred: ${err.getMessage}") *> IO(
-        ExitCode.Error
-      )
-    }
   }
 }
