@@ -1,61 +1,96 @@
+import com.typesafe.sbt.packager.archetypes.JavaAppPackaging
+
 val scala3Version = "3.7.3"
 
-val http4sVersion = "0.23.25"
-val tapirVersion = "1.9.10"
-val declineVersion = "2.4.1"
-val log4catsVersion = "2.6.0"
-val circeVersion = "0.14.6" // For circe-generic
-val circeYamlVersion = "0.15.1"
-val catsEffectVersion = "3.5.4"
-val fs2Version = "3.10.2"
-val slf4jVersion = "2.0.9"
+// Common settings for all projects
+lazy val commonSettings = Seq(
+  version := "0.1.0-SNAPSHOT",
+  scalaVersion := scala3Version,
+  sourceGenerators in Test += Def.task {
+    val file = (sourceManaged in Test).value / "amm.scala"
+    IO.write(file, """object amm extends App { ammonite.AmmoniteMain.main(args) }""")
+    Seq(file)
+  }.taskValue,
+  (fullClasspath in Test) ++= {
+    (updateClassifiers in Test).value
+      .configurations
+      .find(_.configuration.name == Test.name)
+      .get
+      .modules
+      .flatMap(_.artifacts)
+      .collect { case (a, f) if a.classifier == Some("sources") => f }
+  }
+)
 
-lazy val root = project
-  .in(file("."))
+// All dependencies
+lazy val dependencies = Def.setting {
+  object V {
+    val http4s = "0.23.25"
+    val tapir = "1.9.10"
+    val decline = "2.4.1"
+    val log4cats = "2.6.0"
+    val circe = "0.14.6"
+    val circeYaml = "0.15.1"
+    val catsEffect = "3.5.4"
+    val fs2 = "3.10.2"
+    val slf4j = "2.0.9"
+    val munit = "1.0.0"
+  }
+
+  val ammoniteVersion = scalaBinaryVersion.value match {
+    case "2.10" => "1.0.3"
+    case "2.11" => "1.6.7"
+    case _      => "3.0.4"
+  }
+  Seq(
+    "com.lihaoyi" % "ammonite" % ammoniteVersion % "test" cross CrossVersion.full,
+    "io.circe" %% "circe-config" % "0.10.0",
+    "org.typelevel" %% "cats-effect" % V.catsEffect,
+    "co.fs2" %% "fs2-core" % V.fs2,
+    "co.fs2" %% "fs2-io" % V.fs2,
+    "io.circe" %% "circe-generic" % V.circe,
+    "org.http4s" %% "http4s-ember-server" % V.http4s,
+    "org.http4s" %% "http4s-dsl" % V.http4s,
+    "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % V.tapir,
+    "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % V.tapir,
+    "com.monovore" %% "decline-effect" % V.decline,
+    "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
+    "org.slf4j" % "slf4j-simple" % V.slf4j,
+    "io.circe" %% "circe-yaml" % V.circeYaml,
+    "org.scalameta" %% "munit" % V.munit % Test
+  )
+}
+
+lazy val root = (project in file("."))
+  .aggregate(certRoller, configServer)
   .settings(
-    name := "nebula-rolling",
-    version := "0.1.0-SNAPSHOT",
-    scalaVersion := scala3Version,
-    libraryDependencies ++= {
-      val version = scalaBinaryVersion.value match {
-        case "2.10" => "1.0.3"
-        case "2.11" => "1.6.7"
-        case _ ⇒ "3.0.4"
-      }
-      Seq(
-        "com.lihaoyi" % "ammonite" % version % "test" cross CrossVersion.full,
-        "org.scalameta" %% "munit" % "1.0.0" % Test,
-        "io.circe" %% "circe-config" % "0.10.0", // circe-config has its own versioning
-        "org.typelevel" %% "cats-effect" % catsEffectVersion,
-        "co.fs2" %% "fs2-core" % fs2Version,
-        "co.fs2" %% "fs2-io" % fs2Version,
-        "io.circe" %% "circe-generic" % circeVersion,
-        "org.http4s" %% "http4s-ember-server" % http4sVersion,
-        "org.http4s" %% "http4s-dsl" % http4sVersion,
-        "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % tapirVersion,
-        "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % tapirVersion,
-        "com.monovore" %% "decline-effect" % declineVersion,
-        "org.typelevel" %% "log4cats-slf4j" % log4catsVersion,
-        "org.slf4j" % "slf4j-simple" % slf4jVersion,
-        "io.circe" %% "circe-yaml" % circeYamlVersion
-      )
-    },
-    sourceGenerators in Test += Def.task {
-      val file = (sourceManaged in Test).value / "amm.scala"
-      IO.write(
-        file,
-        """object amm extends App { ammonite.AmmoniteMain.main(args) }"""
-      )
-      Seq(file)
-    }.taskValue,
+    name := "nebula-rolling-root",
+    commonSettings
+  )
 
-    (fullClasspath in Test) ++= {
-      (updateClassifiers in Test).value
-        .configurations
-        .find(_.configuration.name == Test.name)
-        .get
-        .modules
-        .flatMap(_.artifacts)
-        .collect{case (a, f) if a.classifier == Some("sources") => f}
-    }
+lazy val common = (project in file("common"))
+  .settings(
+    name := "common",
+    commonSettings,
+    libraryDependencies ++= dependencies.value
+  )
+
+lazy val certRoller = (project in file("cert-roller"))
+  .dependsOn(common)
+  .enablePlugins(JavaAppPackaging)
+  .settings(
+    name := "nebula-cert-roller",
+    commonSettings,
+    Compile / mainClass := Some("com.nebula.rolling.CertRollerApp"),
+    executableScriptName := "nebula-cert-roller"
+  )
+
+lazy val configServer = (project in file("config-server"))
+  .dependsOn(common)
+  .enablePlugins(JavaAppPackaging)
+  .settings(
+    name := "nebula-config-server",
+    commonSettings,
+    Compile / mainClass := Some("com.nebula.rolling.server.ConfigServerApp"),
+    executableScriptName := "nebula-config-server"
   )
