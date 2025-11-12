@@ -18,7 +18,8 @@ lazy val root = project
         "io.circe" %% "circe-config" % "0.10.0",
         "org.typelevel" %% "cats-effect" % "3.5.4",
         "co.fs2" %% "fs2-core" % "3.10.2",
-        "co.fs2" %% "fs2-io" % "3.10.2"
+        "co.fs2" %% "fs2-io" % "3.10.2",
+        "io.circe" %% "circe-generic" % "0.14.6"
       )
     },
     sourceGenerators in Test += Def.task {
