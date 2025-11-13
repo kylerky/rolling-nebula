@@ -14,6 +14,7 @@ import sttp.tapir.server.http4s.Http4sServerInterpreter._
 import com.comcast.ip4s._
 import cats.effect.kernel.Async
 import java.io.File
+import com.teecertlabs.nebula.rolling.DefaultFileSystem
 
 object ConfigServerApp
     extends BaseApp(
@@ -51,7 +52,10 @@ object ConfigServerApp
             .getOrElse(baseConfig)
 
           templateService = new TemplateService(finalConfig)
-          privilegedConfigService = new PrivilegedConfigService(finalConfig)
+          privilegedConfigService = new PrivilegedConfigService(
+            finalConfig,
+            DefaultFileSystem()
+          )
 
           serverHostStr = cliHostOpt.getOrElse(finalConfig.host)
           serverPortInt = cliPortOpt.getOrElse(finalConfig.port)

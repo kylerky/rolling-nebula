@@ -22,11 +22,11 @@ class ServerSuite extends CatsEffectSuite {
   )
 
   test("Privileged endpoint should return 200 OK for privileged IP") {
-    object TestFileSystem extends FileSystem {
+    val fileSystem = new FileSystem {
       override def read(path: String): IO[String] = IO.pure("config content")
     }
     val privilegedConfigService =
-      new PrivilegedConfigService(config)
+      new PrivilegedConfigService(config, fileSystem)
     val privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
       Endpoints.privilegedConfigEndpoint.serverLogic {
         case (hostname, remoteAddress) =>
@@ -55,11 +55,11 @@ class ServerSuite extends CatsEffectSuite {
   test(
     "Privileged endpoint should return 403 Forbidden for non-privileged IP"
   ) {
-    object TestFileSystem extends FileSystem {
+    val fileSystem = new FileSystem {
       override def read(path: String): IO[String] = IO.pure("config content")
     }
     val privilegedConfigService =
-      new PrivilegedConfigService(config)
+      new PrivilegedConfigService(config, fileSystem)
     val privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
       Endpoints.privilegedConfigEndpoint.serverLogic {
         case (hostname, remoteAddress) =>
@@ -87,12 +87,12 @@ class ServerSuite extends CatsEffectSuite {
   test(
     "Privileged endpoint should return 404 Not Found for non-existent config"
   ) {
-    object TestFileSystem extends FileSystem {
+    val fileSystem = new FileSystem {
       override def read(path: String): IO[String] =
         IO.raiseError(new java.nio.file.NoSuchFileException(path))
     }
     val privilegedConfigService =
-      new PrivilegedConfigService(config)
+      new PrivilegedConfigService(config, fileSystem)
     val privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
       Endpoints.privilegedConfigEndpoint.serverLogic {
         case (hostname, remoteAddress) =>

@@ -7,6 +7,10 @@ import fs2.Stream
 import java.time.ZonedDateTime
 import java.time.ZoneOffset
 
+trait FileSystem {
+  def read(path: String): IO[String]
+}
+
 object FileSystem {
   private val pubKeyExtension = ".pub"
 
@@ -37,7 +41,9 @@ object FileSystem {
       .filter(p => p.toString.endsWith(pubKeyExtension))
       .evalFilter(p => Files[IO].isDirectory(p).map(!_))
   }
+}
 
+class DefaultFileSystem extends FileSystem {
   def read(path: String): IO[String] =
     Files[IO].readAll(Path(path)).through(fs2.text.utf8.decode).compile.string
 }

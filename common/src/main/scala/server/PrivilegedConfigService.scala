@@ -6,7 +6,8 @@ import com.teecertlabs.nebula.rolling.FileSystem
 import java.net.InetSocketAddress
 
 class PrivilegedConfigService(
-    config: ConfigServerConfig
+    config: ConfigServerConfig,
+    fileSystem: FileSystem
 ) {
 
   def getConfig(
@@ -15,7 +16,7 @@ class PrivilegedConfigService(
   ): IO[Either[String, String]] = {
     if (Auth.isPrivilegedIp(config)(remoteAddress)) {
       val filePath = s"${config.configDir}/$hostname.yaml"
-      FileSystem
+      fileSystem
         .read(filePath)
         .map[Either[String, String]](Right(_))
         .handleErrorWith {
