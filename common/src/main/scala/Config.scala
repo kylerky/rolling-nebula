@@ -4,6 +4,8 @@ import cats.effect.IO
 import io.circe.generic.auto._
 import io.circe.config.parser
 import com.typesafe.config.{Config, ConfigFactory}
+import fs2.io.file.Path
+import java.io.File
 
 case class HostConfig(name: String, ip: String, groups: List[String])
 
@@ -32,8 +34,12 @@ object ConfigLoader {
   }
 
   def loadConfigServerConfig(
-      config: Config = ConfigFactory.load()
+      configFile: Option[File] = None
   ): IO[ConfigServerConfig] = {
+    val config = configFile match {
+      case Some(file) => ConfigFactory.parseFile(file).withFallback(ConfigFactory.load())
+      case None       => ConfigFactory.load()
+    }
     parser.decodeF[IO, ConfigServerConfig](config.getConfig("config-server"))
   }
 }

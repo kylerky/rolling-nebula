@@ -13,6 +13,7 @@ import sttp.tapir.server.http4s.Http4sServerInterpreter
 import sttp.tapir.server.http4s.Http4sServerInterpreter._
 import com.comcast.ip4s._
 import cats.effect.kernel.Async
+import java.io.File
 
 object ConfigServerApp
     extends BaseApp(
@@ -29,13 +30,24 @@ object ConfigServerApp
   val hostOpt: Opts[Option[String]] = Opts
     .option[String]("host", short = "h", help = "Host to bind the server to.")
     .orNone
+  val configOpt: Opts[Option[File]] = Opts
+    .option[String]("config", help = "Path to the configuration file.")
+    .map(new File(_))
+    .orNone
+  val templateOpt: Opts[Option[String]] = Opts
+    .option[String]("template", help = "Path to the template file.")
+    .orNone
 
-  override def app: Opts[IO[ExitCode]] = (portOpt, hostOpt).mapN {
-    (cliPortOpt, cliHostOpt) =>
+  override def app: Opts[IO[ExitCode]] = (portOpt, hostOpt, configOpt, templateOpt).mapN {
+    (cliPortOpt, cliHostOpt, cliConfigOpt, cliTemplateOpt) =>
       for {
-        config <- ConfigLoader.loadConfigServerConfig()
-        serverHostStr = cliHostOpt.getOrElse(config.host)
-        serverPortInt = cliPortOpt.getOrElse(config.port)
+        baseConfig <- ConfigLoader.loadConfigServerConfig(cliConfigOpt)
+        
+        // Establish precedence: CLI > Config File
+        finalConfig = cliTemplateOpt.map(templatePath => baseConfig.copy(templatePath = templatePath)).getOrElse(baseConfig)
+
+        serverHostStr = cliHostOpt.getOrElse(finalConfig.host)
+        serverPortInt = cliPortOpt.getOrElse(finalConfig.port)
 
         serverHost <- Host
           .fromString(serverHostStr)
@@ -50,7 +62,7 @@ object ConfigServerApp
             )
           )
 
-        templateService = new TemplateService(config)
+        templateService = new TemplateService(finalConfig)
 
         // Define Tapir routes
         labServerRoute = Http4sServerInterpreter[IO]().toRoutes(
