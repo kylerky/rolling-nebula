@@ -20,7 +20,6 @@ lazy val dependencies = Def.setting {
     val catsEffect = "3.5.4"
     val fs2 = "3.10.2"
     val slf4j = "2.0.9"
-    val munit = "1.0.0"
   }
 
   val ammoniteVersion = scalaBinaryVersion.value match {
@@ -42,7 +41,7 @@ lazy val dependencies = Def.setting {
     "org.typelevel" %% "log4cats-slf4j" % V.log4cats,
     "org.slf4j" % "slf4j-simple" % V.slf4j,
     "io.circe" %% "circe-yaml" % V.circeYaml,
-    "org.scalameta" %% "munit" % V.munit % Test
+    "org.typelevel" %% "munit-cats-effect-3" % "1.0.7"
   )
 }
 
@@ -57,6 +56,7 @@ lazy val common = (project in file("common"))
   .settings(
     name := "common",
     commonSettings,
+    Test / fork := true,
     libraryDependencies ++= dependencies.value
   )
 
