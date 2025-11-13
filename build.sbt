@@ -94,3 +94,5 @@ lazy val configServer = (project in file("config-server"))
     Compile / mainClass := Some("com.teecertlabs.nebula.rolling.server.ConfigServerApp"),
     executableScriptName := "nebula-config-server"
   )
+
+ThisBuild / scalafmtOnCompile := true

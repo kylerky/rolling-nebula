@@ -52,12 +52,16 @@ object CertRollerApp
       timestamp <- FileSystem.getTimestamp
       finalOutputDir = FileSystem.getOutputDirPath(baseDir, timestamp)
       _ <- FileSystem.renameDir(tempDir, finalOutputDir)
-      _ <- logger.info(s"Successfully created and renamed output to $finalOutputDir")
+      _ <- logger.info(
+        s"Successfully created and renamed output to $finalOutputDir"
+      )
     } yield ()
 
     certGeneration.attempt.flatMap {
       case Left(err) =>
-        logger.error(err)(s"Certificate generation failed. Temporary directory $tempDirName may still exist for inspection.") *>
+        logger.error(err)(
+          s"Certificate generation failed. Temporary directory $tempDirName may still exist for inspection."
+        ) *>
           IO.pure(ExitCode.Error)
       case Right(_) =>
         IO.pure(ExitCode.Success)

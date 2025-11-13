@@ -64,7 +64,10 @@ object NebulaCert {
         val result = command.!!
         println(s"Signing result for $hostName: $result")
       }
-      _ <- Files[IO].createSymbolicLink(linkFile, Path(certFile.fileName.toString))
+      _ <- Files[IO].createSymbolicLink(
+        linkFile,
+        Path(certFile.fileName.toString)
+      )
     } yield ()
   }
 }

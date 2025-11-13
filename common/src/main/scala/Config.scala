@@ -37,8 +37,9 @@ object ConfigLoader {
       configFile: Option[File] = None
   ): IO[ConfigServerConfig] = {
     val config = configFile match {
-      case Some(file) => ConfigFactory.parseFile(file).withFallback(ConfigFactory.load())
-      case None       => ConfigFactory.load()
+      case Some(file) =>
+        ConfigFactory.parseFile(file).withFallback(ConfigFactory.load())
+      case None => ConfigFactory.load()
     }
     parser.decodeF[IO, ConfigServerConfig](config.getConfig("config-server"))
   }

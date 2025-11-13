@@ -22,7 +22,8 @@ object ConfigServerApp
         "Nebula Configuration Server - Serves dynamic Nebula configurations."
     ) {
   override protected implicit def logger: Logger[IO] = Slf4jLogger.getLogger[IO]
-  implicit val asyncIO: Async[IO] = IO.asyncForIO // Provide Async[IO] explicitly
+  implicit val asyncIO: Async[IO] =
+    IO.asyncForIO // Provide Async[IO] explicitly
 
   val portOpt: Opts[Option[Int]] = Opts
     .option[Int]("port", short = "p", help = "Port to bind the server to.")
@@ -38,63 +39,68 @@ object ConfigServerApp
     .option[String]("template", help = "Path to the template file.")
     .orNone
 
-  override def app: Opts[IO[ExitCode]] = (portOpt, hostOpt, configOpt, templateOpt).mapN {
-    (cliPortOpt, cliHostOpt, cliConfigOpt, cliTemplateOpt) =>
-      for {
-        baseConfig <- ConfigLoader.loadConfigServerConfig(cliConfigOpt)
-        
-        // Establish precedence: CLI > Config File
-        finalConfig = cliTemplateOpt.map(templatePath => baseConfig.copy(templatePath = templatePath)).getOrElse(baseConfig)
+  override def app: Opts[IO[ExitCode]] =
+    (portOpt, hostOpt, configOpt, templateOpt).mapN {
+      (cliPortOpt, cliHostOpt, cliConfigOpt, cliTemplateOpt) =>
+        for {
+          baseConfig <- ConfigLoader.loadConfigServerConfig(cliConfigOpt)
 
-        serverHostStr = cliHostOpt.getOrElse(finalConfig.host)
-        serverPortInt = cliPortOpt.getOrElse(finalConfig.port)
+          // Establish precedence: CLI > Config File
+          finalConfig = cliTemplateOpt
+            .map(templatePath => baseConfig.copy(templatePath = templatePath))
+            .getOrElse(baseConfig)
 
-        serverHost <- Host
-          .fromString(serverHostStr)
-          .liftTo[IO](
-            new IllegalArgumentException(s"Invalid host specified: $serverHostStr")
+          serverHostStr = cliHostOpt.getOrElse(finalConfig.host)
+          serverPortInt = cliPortOpt.getOrElse(finalConfig.port)
+
+          serverHost <- Host
+            .fromString(serverHostStr)
+            .liftTo[IO](
+              new IllegalArgumentException(
+                s"Invalid host specified: $serverHostStr"
+              )
+            )
+          http4sPort <- Port
+            .fromInt(serverPortInt)
+            .liftTo[IO](
+              new IllegalArgumentException(
+                s"Invalid port number specified: $serverPortInt"
+              )
+            )
+
+          templateService = new TemplateService(finalConfig)
+
+          // Define Tapir routes
+          labServerRoute = Http4sServerInterpreter[IO]().toRoutes(
+            Endpoints.labServerEndpoint.serverLogic(
+              templateService.getLabServerConfig
+            )
           )
-        http4sPort <- Port
-          .fromInt(serverPortInt)
-          .liftTo[IO](
-            new IllegalArgumentException(
-              s"Invalid port number specified: $serverPortInt"
+          defaultRoute = Http4sServerInterpreter[IO]().toRoutes(
+            Endpoints.defaultEndpoint.serverLogic(
+              templateService.getDefaultConfig
             )
           )
 
-        templateService = new TemplateService(finalConfig)
+          // Combine routes
+          httpApp = (labServerRoute <+> defaultRoute).orNotFound
 
-        // Define Tapir routes
-        labServerRoute = Http4sServerInterpreter[IO]().toRoutes(
-          Endpoints.labServerEndpoint.serverLogic(
-            templateService.getLabServerConfig
-          )
-        )
-        defaultRoute = Http4sServerInterpreter[IO]().toRoutes(
-          Endpoints.defaultEndpoint.serverLogic(
-            templateService.getDefaultConfig
-          )
-        )
+          // Add http4s logging
+          loggedHttpApp = Http4sLogger.httpApp(
+            logHeaders = true,
+            logBody = false
+          )(httpApp)
 
-        // Combine routes
-        httpApp = (labServerRoute <+> defaultRoute).orNotFound
-
-        // Add http4s logging
-        loggedHttpApp = Http4sLogger.httpApp(
-          logHeaders = true,
-          logBody = false
-        )(httpApp)
-
-        _ <- EmberServerBuilder
-          .default[IO]
-          .withHost(serverHost)
-          .withPort(http4sPort)
-          .withHttpApp(loggedHttpApp)
-          .build
-          .use { server =>
-            logger.info(s"Config Server started at ${server.address}") *>
-              IO.never // Keep the server running indefinitely
-          }
-      } yield ExitCode.Success
-  }
+          _ <- EmberServerBuilder
+            .default[IO]
+            .withHost(serverHost)
+            .withPort(http4sPort)
+            .withHttpApp(loggedHttpApp)
+            .build
+            .use { server =>
+              logger.info(s"Config Server started at ${server.address}") *>
+                IO.never // Keep the server running indefinitely
+            }
+        } yield ExitCode.Success
+    }
 }

@@ -5,7 +5,8 @@ import com.monovore.decline.Opts
 import com.monovore.decline.effect.CommandIOApp
 import org.typelevel.log4cats.Logger
 
-abstract class BaseApp(name: String, header: String) extends CommandIOApp(name, header) {
+abstract class BaseApp(name: String, header: String)
+    extends CommandIOApp(name, header) {
 
   // The logger must be defined by the subclass
   protected implicit def logger: Logger[IO]
@@ -17,7 +18,9 @@ abstract class BaseApp(name: String, header: String) extends CommandIOApp(name, 
   final override def main: Opts[IO[ExitCode]] = {
     app.map { logicIO =>
       logicIO.handleErrorWith { err =>
-        logger.error(err)(s"An unhandled error occurred: ${err.getMessage}") *> IO(ExitCode.Error)
+        logger.error(err)(
+          s"An unhandled error occurred: ${err.getMessage}"
+        ) *> IO(ExitCode.Error)
       }
     }
   }
