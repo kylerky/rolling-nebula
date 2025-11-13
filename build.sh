@@ -2,8 +2,8 @@
 set -euxo pipefail
 
 # Define image names and versions with full paths
-SBT_BUILD_IMAGE="docker.io/sbtscala/sbt:eclipse-temurin-17"
-RUNTIME_IMAGE="docker.io/library/eclipse-temurin:17-jre-focal"
+SBT_BUILD_IMAGE="docker.io/sbtscala/scala-sbt:eclipse-temurin-alpine-24.0.1_9_1.11.7_3.7.4"
+RUNTIME_IMAGE="docker.io/library/eclipse-temurin:24.0.2_12-jre-ubi10-minimal"
 FINAL_IMAGE_NAME="nebula-rolling"
 
 # --- Build Stage ---
@@ -34,7 +34,8 @@ buildah config --label name="nebula-rolling-runtime" "$runtime_container"
 buildah workingdir "$runtime_container" /app
 
 # Install curl (needed to download nebula-cert)
-buildah run "$runtime_container" apt-get update && apt-get install -y curl --no-install-recommends && rm -rf /var/lib/apt/lists/*
+# Note: ubi10-minimal uses microdnf, not apt-get
+buildah run "$runtime_container" microdnf update && microdnf install -y curl && microdnf clean all
 
 # Download and install nebula-cert from nightly releases
 # The unzipped file name is typically 'nebula-cert'
