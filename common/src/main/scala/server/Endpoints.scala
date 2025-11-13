@@ -4,15 +4,16 @@ import sttp.tapir._
 import java.net.InetSocketAddress
 import com.teecertlabs.nebula.rolling.ConfigServerConfig
 import com.teecertlabs.nebula.rolling.server.Auth
+import com.teecertlabs.nebula.rolling.server.HttpError
 
 object Endpoints {
 
   // Base endpoint definition
-  private val baseEndpoint = endpoint.errorOut(stringBody)
+  private val baseEndpoint = endpoint.errorOut(HttpError.endpointOutput)
 
   // /config/lab_server endpoint
   val labServerEndpoint
-      : PublicEndpoint[Option[InetSocketAddress], String, String, Any] =
+      : PublicEndpoint[Option[InetSocketAddress], HttpError, String, Any] =
     baseEndpoint.get
       .in("config" / "lab_server")
       .in(extractFromRequest(_.connectionInfo.remote))
@@ -23,7 +24,7 @@ object Endpoints {
 
   // /config/default endpoint
   val defaultEndpoint
-      : PublicEndpoint[Option[InetSocketAddress], String, String, Any] =
+      : PublicEndpoint[Option[InetSocketAddress], HttpError, String, Any] =
     baseEndpoint.get
       .in("config" / "default")
       .in(extractFromRequest(_.connectionInfo.remote))
@@ -35,7 +36,7 @@ object Endpoints {
   // Privileged config endpoint
   val privilegedConfigEndpoint: PublicEndpoint[
     (String, Option[InetSocketAddress]),
-    String,
+    HttpError,
     String,
     Any
   ] =

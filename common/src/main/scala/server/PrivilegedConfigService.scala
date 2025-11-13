@@ -13,19 +13,24 @@ class PrivilegedConfigService(
   def getConfig(
       remoteAddress: Option[InetSocketAddress],
       hostname: String
-  ): IO[Either[String, String]] = {
+  ): IO[Either[HttpError, String]] = {
     if (Auth.isPrivilegedIp(config)(remoteAddress)) {
       val filePath = s"${config.configDir}/$hostname.yaml"
       fileSystem
         .read(filePath)
-        .map[Either[String, String]](Right(_))
+        .map[Either[HttpError, String]](Right(_))
         .handleErrorWith {
           case _: java.nio.file.NoSuchFileException =>
-            IO.pure(Left(s"Configuration for host '$hostname' not found."))
+            IO.pure(
+              Left(
+                HttpError
+                  .NotFound(s"Configuration for host '$hostname' not found.")
+              )
+            )
           case e: Throwable => IO.raiseError(e)
         }
     } else {
-      IO.pure(Left("Forbidden"))
+      IO.pure(Left(HttpError.Unauthorized("Forbidden")))
     }
   }
 }

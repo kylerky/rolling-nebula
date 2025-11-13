@@ -124,21 +124,30 @@ class TemplateService(config: ConfigServerConfig) {
   private def processRequest(
       clientIp: Option[InetSocketAddress],
       firewallType: String
-  ): IO[Either[String, String]] = {
+  ): IO[Either[HttpError, String]] = {
     clientIp.map(_.getAddress.getHostAddress) match {
       case Some(ip) =>
-        generateConfig(ip, firewallType).attempt.map(_.leftMap(_.getMessage))
-      case None => IO.pure(Left("Could not determine client IP address."))
+        generateConfig(ip, firewallType).attempt.map(
+          _.leftMap(e => HttpError.InternalServerError(e.getMessage))
+        )
+      case None =>
+        IO.pure(
+          Left(
+            HttpError.InternalServerError(
+              "Could not determine client IP address."
+            )
+          )
+        )
     }
   }
 
   def getLabServerConfig(
       clientIp: Option[InetSocketAddress]
-  ): IO[Either[String, String]] =
+  ): IO[Either[HttpError, String]] =
     processRequest(clientIp, "lab_server")
 
   def getDefaultConfig(
       clientIp: Option[InetSocketAddress]
-  ): IO[Either[String, String]] =
+  ): IO[Either[HttpError, String]] =
     processRequest(clientIp, "default")
 }
