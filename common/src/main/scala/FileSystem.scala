@@ -2,21 +2,34 @@ package com.teecertlabs.nebula.rolling
 
 import cats.effect.IO
 import fs2.io.file.{Files, Path}
-import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import fs2.Stream
+import java.time.ZonedDateTime
+import java.time.ZoneOffset
 
 object FileSystem {
   private val pubKeyExtension = ".pub"
 
-  def createOutputDirectory(baseDir: Path): IO[Path] = for {
-    today <- IO(
-      LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-    )
-    outputDir = baseDir.resolve(s"config_$today")
-    _ <- Files[IO].createDirectories(outputDir)
-    _ <- Files[IO].createDirectories(outputDir / "certs")
-  } yield outputDir
+  def getTimestamp: IO[String] = IO(
+    ZonedDateTime
+      .now(ZoneOffset.UTC)
+      .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH-mm-ss'Z'"))
+  )
+
+  def getOutputDirPath(baseDir: Path, timestamp: String): Path =
+    baseDir.resolve(s"config_$timestamp")
+
+  def createTempDir(baseDir: Path, name: String): IO[Path] = {
+    val tempDir = baseDir.resolve(name)
+    for {
+      exists <- Files[IO].exists(tempDir)
+      _ <- if (exists) Files[IO].deleteRecursively(tempDir) else IO.unit
+      _ <- Files[IO].createDirectories(tempDir)
+    } yield tempDir
+  }
+
+  def renameDir(from: Path, to: Path): IO[Unit] =
+    Files[IO].move(from, to)
 
   def getPublicKeyFiles(pubDir: Path): Stream[IO, Path] = {
     Files[IO]

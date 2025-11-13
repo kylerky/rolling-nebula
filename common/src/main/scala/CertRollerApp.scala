@@ -21,13 +21,15 @@ object CertRollerApp
     .withDefault(System.getProperty("user.dir"))
     .map(Path(_))
 
+  private val tempDirName = "tmp_config"
+
   override def app: Opts[IO[ExitCode]] = baseDirOpt.map { baseDir =>
-    for {
+    val certGeneration = for {
       config <- ConfigLoader.loadCertRollerConfig()
       pubDir = baseDir / config.pubDir
-      outputDir <- FileSystem.createOutputDirectory(baseDir)
-      _ <- logger.info(s"Created output directory: $outputDir")
-      _ <- NebulaCert.generateCA(config.caName, outputDir)
+      tempDir <- FileSystem.createTempDir(baseDir, tempDirName)
+      _ <- logger.info(s"Created temporary directory: $tempDir")
+      _ <- NebulaCert.generateCA(config.caName, tempDir)
       _ <- logger.info("Generated CA certificate and key.")
       pubKeyFiles <- FileSystem.getPublicKeyFiles(pubDir).compile.toList
       _ <- pubKeyFiles.traverse_ { pubKeyPath =>
@@ -35,11 +37,11 @@ object CertRollerApp
         config.hosts.get(hostName) match {
           case Some(hostConfig) =>
             NebulaCert.signHostKey(
-              caCrt = outputDir / "ca.crt",
-              caKey = outputDir / "ca.key",
+              caCrt = tempDir / "ca.crt",
+              caKey = tempDir / "ca.key",
               pubKey = pubKeyPath,
               hostConfig = hostConfig,
-              outputDir = outputDir
+              outputDir = tempDir
             ) *> logger.info(s"Signed certificate for $hostName.")
           case None =>
             logger.warn(
@@ -47,6 +49,18 @@ object CertRollerApp
             )
         }
       }
-    } yield ExitCode.Success
+      timestamp <- FileSystem.getTimestamp
+      finalOutputDir = FileSystem.getOutputDirPath(baseDir, timestamp)
+      _ <- FileSystem.renameDir(tempDir, finalOutputDir)
+      _ <- logger.info(s"Successfully created and renamed output to $finalOutputDir")
+    } yield ()
+
+    certGeneration.attempt.flatMap {
+      case Left(err) =>
+        logger.error(err)(s"Certificate generation failed. Temporary directory $tempDirName may still exist for inspection.") *>
+          IO.pure(ExitCode.Error)
+      case Right(_) =>
+        IO.pure(ExitCode.Success)
+    }
   }
 }
