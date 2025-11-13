@@ -33,6 +33,9 @@ buildah config --label name="nebula-rolling-runtime" "$runtime_container"
 # Set working directory inside the runtime container
 buildah config --workingdir /app "$runtime_container"
 
+# Create a mount point for persistent data
+buildah run "$runtime_container" mkdir -p /data
+
 # Install curl and unzip (needed to download nebula-cert and extract packages)
 # Wrap commands in 'bash -c' to ensure they all run inside the container
 buildah run "$runtime_container" -- bash -c "/usr/bin/microdnf update -y && /usr/bin/microdnf install -y curl unzip && /usr/bin/microdnf clean all"
@@ -58,15 +61,31 @@ buildah run "$runtime_container" rm /tmp/config-server.zip
 buildah config --port 8080 "$runtime_container"
 
 # Set the default command to run the config-server
-buildah config --cmd "/app/config-server/bin/nebula-config-server" "$runtime_container"
+# Note: The default command now points to a config file in the /data volume
+buildah config --cmd "/app/config-server/bin/nebula-config-server --config /data/application.conf" "$runtime_container"
 
 # Commit the runtime container to a new image
 buildah commit "$runtime_container" "$FINAL_IMAGE_NAME"
 
 echo "--- Build Complete ---"
 echo "Image '$FINAL_IMAGE_NAME' created successfully."
-echo "To run the config-server: podman run -p 8080:8080 $FINAL_IMAGE_NAME"
-echo "To run the cert-roller: podman run -v \$(pwd)/pubs:/app/pubs $FINAL_IMAGE_NAME /app/cert-roller/bin/nebula-cert-roller <base-directory>"
+echo ""
+echo "To use the image, create a local directory (e.g., 'my_data') with the following structure:"
+echo "my_data/"
+echo "├── config/"
+echo "│   ├── config-server.conf"
+echo "│   └── cert-roller.conf"
+echo "└── pubs/"
+echo "    └── host1.pub"
+echo ""
+echo "Then, run the containers with a volume mount:"
+echo ""
+echo "To run the config-server:"
+echo "podman run -p 8080:8080 -v \$(pwd)/my_data:/data:Z $FINAL_IMAGE_NAME"
+echo ""
+echo "To run the cert-roller:"
+echo "podman run -v \$(pwd)/my_data:/data:Z $FINAL_IMAGE_NAME /app/cert-roller/bin/nebula-cert-roller --config /data/config/cert-roller.conf /data"
+
 
 # Clean up intermediate containers
 buildah rm "$build_container"
