@@ -1,0 +1,17 @@
+# Ignore common build artifacts and version control directories
+target/
+project/target/
+.bsp/
+.git/
+.idea/
+.vscode/
+.DS_Store
+*.log
+*.lock
+
+# Ignore sbt specific files
+.sbt/
+.sbt_cache/
+
+# Ignore build scripts themselves
+build.sh
