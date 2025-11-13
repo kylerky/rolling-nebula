@@ -1,9 +1,9 @@
 #!/bin/bash
 set -euxo pipefail
 
-# Define image names and versions
-SBT_BUILD_IMAGE="sbtscala/sbt:eclipse-temurin-17"
-RUNTIME_IMAGE="eclipse-temurin:17-jre-focal"
+# Define image names and versions with full paths
+SBT_BUILD_IMAGE="docker.io/sbtscala/sbt:eclipse-temurin-17"
+RUNTIME_IMAGE="docker.io/library/eclipse-temurin:17-jre-focal"
 FINAL_IMAGE_NAME="nebula-rolling"
 
 # --- Build Stage ---
