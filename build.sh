@@ -17,7 +17,7 @@ buildah config --label name="nebula-rolling-builder" "$build_container"
 buildah copy "$build_container" . /app
 
 # Set working directory inside the build container
-buildah workingdir "$build_container" /app
+buildah config --workingdir /app "$build_container"
 
 # Run sbt to package the applications
 # The 'universal:packageBin' task creates zip files in target/universal
@@ -31,7 +31,7 @@ runtime_container=$(buildah from "$RUNTIME_IMAGE")
 buildah config --label name="nebula-rolling-runtime" "$runtime_container"
 
 # Set working directory inside the runtime container
-buildah workingdir "$runtime_container" /app
+buildah config --workingdir /app "$runtime_container"
 
 # Install curl (needed to download nebula-cert)
 # Note: ubi10-minimal uses microdnf, not apt-get
