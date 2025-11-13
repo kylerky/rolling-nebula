@@ -7,7 +7,7 @@ import com.teecertlabs.nebula.rolling.FileSystem
 import org.http4s._
 import org.http4s.implicits._
 import sttp.tapir.server.http4s.Http4sServerInterpreter
-import java.net.InetSocketAddress
+import com.comcast.ip4s._
 
 class ServerSuite extends CatsEffectSuite {
 
@@ -40,8 +40,12 @@ class ServerSuite extends CatsEffectSuite {
     ).withAttribute(
       Request.Keys.ConnectionInfo,
       Request.Connection(
-        local = InetSocketAddress.createUnresolved("localhost", 8080),
-        remote = InetSocketAddress.createUnresolved("192.168.1.100", 12345),
+        local = SocketAddress.fromInetSocketAddress(
+          new java.net.InetSocketAddress("localhost", 8080)
+        ),
+        remote = SocketAddress.fromInetSocketAddress(
+          new java.net.InetSocketAddress("192.168.1.100", 12345)
+        ),
         secure = false
       )
     )
@@ -73,8 +77,12 @@ class ServerSuite extends CatsEffectSuite {
     ).withAttribute(
       Request.Keys.ConnectionInfo,
       Request.Connection(
-        local = InetSocketAddress.createUnresolved("localhost", 8080),
-        remote = InetSocketAddress.createUnresolved("1.2.3.4", 12345),
+        local = SocketAddress.fromInetSocketAddress(
+          new java.net.InetSocketAddress("localhost", 8080)
+        ),
+        remote = SocketAddress.fromInetSocketAddress(
+          new java.net.InetSocketAddress("1.2.3.4", 12345)
+        ),
         secure = false
       )
     )
@@ -106,8 +114,12 @@ class ServerSuite extends CatsEffectSuite {
     ).withAttribute(
       Request.Keys.ConnectionInfo,
       Request.Connection(
-        local = InetSocketAddress.createUnresolved("localhost", 8080),
-        remote = InetSocketAddress.createUnresolved("192.168.1.100", 12345),
+        local = SocketAddress.fromInetSocketAddress(
+          new java.net.InetSocketAddress("localhost", 8080)
+        ),
+        remote = SocketAddress.fromInetSocketAddress(
+          new java.net.InetSocketAddress("192.168.1.100", 12345)
+        ),
         secure = false
       )
     )
