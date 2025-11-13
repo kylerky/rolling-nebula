@@ -5,21 +5,7 @@ val scala3Version = "3.7.3"
 // Common settings for all projects
 lazy val commonSettings = Seq(
   version := "0.1.0-SNAPSHOT",
-  scalaVersion := scala3Version,
-  sourceGenerators in Test += Def.task {
-    val file = (sourceManaged in Test).value / "amm.scala"
-    IO.write(file, """object amm extends App { ammonite.AmmoniteMain.main(args) }""")
-    Seq(file)
-  }.taskValue,
-  (fullClasspath in Test) ++= {
-    (updateClassifiers in Test).value
-      .configurations
-      .find(_.configuration.name == Test.name)
-      .get
-      .modules
-      .flatMap(_.artifacts)
-      .collect { case (a, f) if a.classifier == Some("sources") => f }
-  }
+  scalaVersion := scala3Version
 )
 
 // All dependencies
@@ -43,7 +29,6 @@ lazy val dependencies = Def.setting {
     case _      => "3.0.4"
   }
   Seq(
-    "com.lihaoyi" % "ammonite" % ammoniteVersion % "test" cross CrossVersion.full,
     "io.circe" %% "circe-config" % "0.10.0",
     "org.typelevel" %% "cats-effect" % V.catsEffect,
     "co.fs2" %% "fs2-core" % V.fs2,

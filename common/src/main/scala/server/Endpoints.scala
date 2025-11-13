@@ -2,6 +2,8 @@ package com.teecertlabs.nebula.rolling.server
 
 import sttp.tapir._
 import java.net.InetSocketAddress
+import com.teecertlabs.nebula.rolling.ConfigServerConfig
+import com.teecertlabs.nebula.rolling.server.Auth
 
 object Endpoints {
 
@@ -28,5 +30,20 @@ object Endpoints {
       .out(stringBody)
       .description(
         "Serves default Nebula configuration with standard firewall rules."
+      )
+
+  // Privileged config endpoint
+  val privilegedConfigEndpoint: PublicEndpoint[
+    (String, Option[InetSocketAddress]),
+    String,
+    String,
+    Any
+  ] =
+    baseEndpoint.get
+      .in("privileged" / "config" / path[String]("hostname"))
+      .in(extractFromRequest(_.connectionInfo.remote))
+      .out(stringBody)
+      .description(
+        "Serves host-specific Nebula configuration for privileged access."
       )
 }

@@ -37,4 +37,7 @@ object FileSystem {
       .filter(p => p.toString.endsWith(pubKeyExtension))
       .evalFilter(p => Files[IO].isDirectory(p).map(!_))
   }
+
+  def read(path: String): IO[String] =
+    Files[IO].readAll(Path(path)).through(fs2.text.utf8.decode).compile.string
 }

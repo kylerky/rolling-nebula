@@ -23,7 +23,8 @@ case class ConfigServerConfig(
     templatePath: String,
     pkiKeyPath: String,
     configDir: String,
-    labServerInboundGroups: List[String]
+    labServerInboundGroups: List[String],
+    privilegedIps: List[String]
 )
 
 object ConfigLoader {

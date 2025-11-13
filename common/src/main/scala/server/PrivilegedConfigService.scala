@@ -1,0 +1,30 @@
+package com.teecertlabs.nebula.rolling.server
+
+import cats.effect.IO
+import com.teecertlabs.nebula.rolling.ConfigServerConfig
+import com.teecertlabs.nebula.rolling.FileSystem
+import java.net.InetSocketAddress
+
+class PrivilegedConfigService(
+    config: ConfigServerConfig
+) {
+
+  def getConfig(
+      remoteAddress: Option[InetSocketAddress],
+      hostname: String
+  ): IO[Either[String, String]] = {
+    if (Auth.isPrivilegedIp(config)(remoteAddress)) {
+      val filePath = s"${config.configDir}/$hostname.yaml"
+      FileSystem
+        .read(filePath)
+        .map[Either[String, String]](Right(_))
+        .handleErrorWith {
+          case _: java.nio.file.NoSuchFileException =>
+            IO.pure(Left(s"Configuration for host '$hostname' not found."))
+          case e: Throwable => IO.raiseError(e)
+        }
+    } else {
+      IO.pure(Left("Forbidden"))
+    }
+  }
+}

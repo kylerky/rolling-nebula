@@ -29,48 +29,49 @@ object CertRollerApp
 
   private val tempDirName = "tmp_config"
 
-  override def app: Opts[IO[ExitCode]] = (baseDirOpt, configOpt).mapN { (baseDir, cliConfigOpt) =>
-    val certGeneration = for {
-      config <- ConfigLoader.loadCertRollerConfig(cliConfigOpt)
-      pubDir = baseDir / config.pubDir
-      tempDir <- FileSystem.createTempDir(baseDir, tempDirName)
-      _ <- logger.info(s"Created temporary directory: $tempDir")
-      _ <- NebulaCert.generateCA(config.caName, tempDir)
-      _ <- logger.info("Generated CA certificate and key.")
-      pubKeyFiles <- FileSystem.getPublicKeyFiles(pubDir).compile.toList
-      _ <- pubKeyFiles.traverse_ { pubKeyPath =>
-        val hostName = pubKeyPath.fileName.toString.stripSuffix(".pub")
-        config.hosts.get(hostName) match {
-          case Some(hostConfig) =>
-            NebulaCert.signHostKey(
-              caCrt = tempDir / "ca.crt",
-              caKey = tempDir / "ca.key",
-              pubKey = pubKeyPath,
-              hostConfig = hostConfig,
-              outputDir = tempDir
-            ) *> logger.info(s"Signed certificate for $hostName.")
-          case None =>
-            logger.warn(
-              s"No configuration found for host '$hostName'. Skipping."
-            )
+  override def app: Opts[IO[ExitCode]] = (baseDirOpt, configOpt).mapN {
+    (baseDir, cliConfigOpt) =>
+      val certGeneration = for {
+        config <- ConfigLoader.loadCertRollerConfig(cliConfigOpt)
+        pubDir = baseDir / config.pubDir
+        tempDir <- FileSystem.createTempDir(baseDir, tempDirName)
+        _ <- logger.info(s"Created temporary directory: $tempDir")
+        _ <- NebulaCert.generateCA(config.caName, tempDir)
+        _ <- logger.info("Generated CA certificate and key.")
+        pubKeyFiles <- FileSystem.getPublicKeyFiles(pubDir).compile.toList
+        _ <- pubKeyFiles.traverse_ { pubKeyPath =>
+          val hostName = pubKeyPath.fileName.toString.stripSuffix(".pub")
+          config.hosts.get(hostName) match {
+            case Some(hostConfig) =>
+              NebulaCert.signHostKey(
+                caCrt = tempDir / "ca.crt",
+                caKey = tempDir / "ca.key",
+                pubKey = pubKeyPath,
+                hostConfig = hostConfig,
+                outputDir = tempDir
+              ) *> logger.info(s"Signed certificate for $hostName.")
+            case None =>
+              logger.warn(
+                s"No configuration found for host '$hostName'. Skipping."
+              )
+          }
         }
-      }
-      timestamp <- FileSystem.getTimestamp
-      finalOutputDir = FileSystem.getOutputDirPath(baseDir, timestamp)
-      _ <- FileSystem.renameDir(tempDir, finalOutputDir)
-      _ <- logger.info(
-        s"Successfully created and renamed output to $finalOutputDir"
-      )
-    } yield ()
+        timestamp <- FileSystem.getTimestamp
+        finalOutputDir = FileSystem.getOutputDirPath(baseDir, timestamp)
+        _ <- FileSystem.renameDir(tempDir, finalOutputDir)
+        _ <- logger.info(
+          s"Successfully created and renamed output to $finalOutputDir"
+        )
+      } yield ()
 
-    certGeneration.attempt.flatMap {
-      case Left(err) =>
-        logger.error(err)(
-          s"Certificate generation failed. Temporary directory $tempDirName may still exist for inspection."
-        ) *>
-          IO.pure(ExitCode.Error)
-      case Right(_) =>
-        IO.pure(ExitCode.Success)
-    }
+      certGeneration.attempt.flatMap {
+        case Left(err) =>
+          logger.error(err)(
+            s"Certificate generation failed. Temporary directory $tempDirName may still exist for inspection."
+          ) *>
+            IO.pure(ExitCode.Error)
+        case Right(_) =>
+          IO.pure(ExitCode.Success)
+      }
   }
 }

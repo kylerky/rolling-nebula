@@ -6,7 +6,7 @@ import com.monovore.decline.Opts
 import com.teecertlabs.nebula.rolling.util.BaseApp
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import com.teecertlabs.nebula.rolling.ConfigLoader
+import com.teecertlabs.nebula.rolling.{ConfigLoader, FileSystem}
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.middleware.Logger as Http4sLogger
 import sttp.tapir.server.http4s.Http4sServerInterpreter
@@ -50,6 +50,9 @@ object ConfigServerApp
             .map(templatePath => baseConfig.copy(templatePath = templatePath))
             .getOrElse(baseConfig)
 
+          templateService = new TemplateService(finalConfig)
+          privilegedConfigService = new PrivilegedConfigService(finalConfig)
+
           serverHostStr = cliHostOpt.getOrElse(finalConfig.host)
           serverPortInt = cliPortOpt.getOrElse(finalConfig.port)
 
@@ -68,8 +71,6 @@ object ConfigServerApp
               )
             )
 
-          templateService = new TemplateService(finalConfig)
-
           // Define Tapir routes
           labServerRoute = Http4sServerInterpreter[IO]().toRoutes(
             Endpoints.labServerEndpoint.serverLogic(
@@ -81,9 +82,16 @@ object ConfigServerApp
               templateService.getDefaultConfig
             )
           )
+          privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
+            Endpoints.privilegedConfigEndpoint.serverLogic {
+              case (hostname, remoteAddress) =>
+                privilegedConfigService.getConfig(remoteAddress, hostname)
+            }
+          )
 
           // Combine routes
-          httpApp = (labServerRoute <+> defaultRoute).orNotFound
+          httpApp =
+            (labServerRoute <+> defaultRoute <+> privilegedConfigRoute).orNotFound
 
           // Add http4s logging
           loggedHttpApp = Http4sLogger.httpApp(
