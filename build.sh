@@ -34,12 +34,11 @@ buildah config --label name="nebula-rolling-runtime" "$runtime_container"
 buildah config --workingdir /app "$runtime_container"
 
 # Install curl (needed to download nebula-cert)
-# Note: ubi10-minimal uses microdnf, not apt-get
-buildah run "$runtime_container" microdnf update && microdnf install -y curl && microdnf clean all
+# Note: ubi10-minimal uses microdnf, not apt-get. -y flag should prevent confirmation.
+buildah run "$runtime_container" microdnf update -y && microdnf install -y curl && microdnf clean all
 
-# Download and install nebula-cert from nightly releases
-# The unzipped file name is typically 'nebula-cert'
-buildah run "$runtime_container" curl -L "https://github.com/NebulaOSS/nebula-nightly/releases/download/latest/nebula-linux-amd64.tar.gz" -o /tmp/nebula.tar.gz
+# Download and install nebula-cert from the specified nightly release
+buildah run "$runtime_container" curl -L "https://github.com/NebulaOSS/nebula-nightly/releases/download/v1.10.0-nightly20251113/nebula-linux-amd64.tar.gz" -o /tmp/nebula.tar.gz
 buildah run "$runtime_container" tar -xzf /tmp/nebula.tar.gz -C /usr/local/bin/
 buildah run "$runtime_container" mv /usr/local/bin/nebula-linux-amd64 /usr/local/bin/nebula-cert # Rename if necessary, assuming it extracts to nebula-linux-amd64
 buildah run "$runtime_container" rm /tmp/nebula.tar.gz
