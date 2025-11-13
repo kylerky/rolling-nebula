@@ -28,8 +28,13 @@ case class ConfigServerConfig(
 
 object ConfigLoader {
   def loadCertRollerConfig(
-      config: Config = ConfigFactory.load()
+      configFile: Option[File] = None
   ): IO[CertRollerConfig] = {
+    val config = configFile match {
+      case Some(file) =>
+        ConfigFactory.parseFile(file).withFallback(ConfigFactory.load())
+      case None => ConfigFactory.load()
+    }
     parser.decodeF[IO, CertRollerConfig](config.getConfig("cert-roller"))
   }
 

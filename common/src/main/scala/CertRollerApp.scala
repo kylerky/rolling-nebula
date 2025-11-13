@@ -7,6 +7,7 @@ import com.monovore.decline.Opts
 import com.teecertlabs.nebula.rolling.util.BaseApp
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
+import java.io.File
 
 object CertRollerApp
     extends BaseApp(
@@ -21,11 +22,16 @@ object CertRollerApp
     .withDefault(System.getProperty("user.dir"))
     .map(Path(_))
 
+  val configOpt: Opts[Option[File]] = Opts
+    .option[String]("config", help = "Path to the configuration file.")
+    .map(new File(_))
+    .orNone
+
   private val tempDirName = "tmp_config"
 
-  override def app: Opts[IO[ExitCode]] = baseDirOpt.map { baseDir =>
+  override def app: Opts[IO[ExitCode]] = (baseDirOpt, configOpt).mapN { (baseDir, cliConfigOpt) =>
     val certGeneration = for {
-      config <- ConfigLoader.loadCertRollerConfig()
+      config <- ConfigLoader.loadCertRollerConfig(cliConfigOpt)
       pubDir = baseDir / config.pubDir
       tempDir <- FileSystem.createTempDir(baseDir, tempDirName)
       _ <- logger.info(s"Created temporary directory: $tempDir")
