@@ -40,7 +40,6 @@ buildah run "$runtime_container" microdnf update -y && microdnf install -y curl 
 # Download and install nebula-cert from the specified nightly release
 buildah run "$runtime_container" curl -L "https://github.com/NebulaOSS/nebula-nightly/releases/download/v1.10.0-nightly20251113/nebula-linux-amd64.tar.gz" -o /tmp/nebula.tar.gz
 buildah run "$runtime_container" tar -xzf /tmp/nebula.tar.gz -C /usr/local/bin/
-buildah run "$runtime_container" mv /usr/local/bin/nebula-linux-amd64 /usr/local/bin/nebula-cert # Rename if necessary, assuming it extracts to nebula-linux-amd64
 buildah run "$runtime_container" rm /tmp/nebula.tar.gz
 
 # Copy packaged applications from the build container
