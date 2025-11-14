@@ -46,7 +46,7 @@ lazy val dependencies = Def.setting {
 }
 
 lazy val root = (project in file("."))
-  .aggregate(certRoller, configServer)
+  .aggregate(common, certRoller, configServer)
   .settings(
     name := "nebula-rolling-root",
     commonSettings
