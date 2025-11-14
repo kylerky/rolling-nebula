@@ -48,7 +48,13 @@ object ConfigServerApp
 
   override def app: Opts[IO[ExitCode]] =
     (portOpt, hostOpt, configOpt, templateOpt, numConfigsOpt).mapN {
-      (cliPortOpt, cliHostOpt, cliConfigOpt, cliTemplateOpt, cliNumConfigsOpt) =>
+      (
+          cliPortOpt,
+          cliHostOpt,
+          cliConfigOpt,
+          cliTemplateOpt,
+          cliNumConfigsOpt
+      ) =>
         for {
           baseConfig <- ConfigLoader.loadConfigServerConfig(cliConfigOpt)
 
@@ -89,13 +95,15 @@ object ConfigServerApp
 
           // Define Tapir routes
           labServerRoute = Http4sServerInterpreter[IO]().toRoutes(
-            Endpoints.labServerEndpoint.serverLogic { case (remoteAddress, limit) =>
-              templateService.getLabServerConfig(remoteAddress, limit)
+            Endpoints.labServerEndpoint.serverLogic {
+              case (remoteAddress, limit) =>
+                templateService.getLabServerConfig(remoteAddress, limit)
             }
           )
           defaultRoute = Http4sServerInterpreter[IO]().toRoutes(
-            Endpoints.defaultEndpoint.serverLogic { case (remoteAddress, limit) =>
-              templateService.getDefaultConfig(remoteAddress, limit)
+            Endpoints.defaultEndpoint.serverLogic {
+              case (remoteAddress, limit) =>
+                templateService.getDefaultConfig(remoteAddress, limit)
             }
           )
           privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(

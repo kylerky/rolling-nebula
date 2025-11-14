@@ -38,19 +38,19 @@ class TemplateService(config: ConfigServerConfig) {
 
   private def getLatestConfigDirs(limit: Option[Int]): Stream[IO, Path] = {
     val effectiveLimit = limit match {
-      case Some(0) => None // 0 means all
+      case Some(0)  => None // 0 means all
       case Some(-1) =>
         config.numConfigs match {
-          case Some(0)   => None
-          case Some(n)   => Some(n)
-          case None      => Some(5) // Default if not specified in config
+          case Some(0) => None
+          case Some(n) => Some(n)
+          case None    => Some(5) // Default if not specified in config
         }
       case Some(n) => Some(n)
-      case None =>
+      case None    =>
         config.numConfigs match {
-          case Some(0)   => None
-          case Some(n)   => Some(n)
-          case None      => Some(5) // Default if not specified in config
+          case Some(0) => None
+          case Some(n) => Some(n)
+          case None    => Some(5) // Default if not specified in config
         }
     }
 
