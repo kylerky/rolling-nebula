@@ -18,7 +18,8 @@ class ServerSuite extends CatsEffectSuite {
     pkiKeyPath = "",
     configDir = "configs",
     labServerInboundGroups = List.empty,
-    privilegedIps = List("192.168.1.100")
+    privilegedIps = List("192.168.1.100"),
+    numConfigs = None
   )
 
   test("Privileged endpoint should return 200 OK for privileged IP") {
