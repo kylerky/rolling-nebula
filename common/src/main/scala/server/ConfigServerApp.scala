@@ -39,17 +39,29 @@ object ConfigServerApp
   val templateOpt: Opts[Option[String]] = Opts
     .option[String]("template", help = "Path to the template file.")
     .orNone
+  val numConfigsOpt: Opts[Option[Int]] = Opts
+    .option[Int](
+      "num-configs",
+      help = "Number of configurations to serve (0 for all)."
+    )
+    .orNone
 
   override def app: Opts[IO[ExitCode]] =
-    (portOpt, hostOpt, configOpt, templateOpt).mapN {
-      (cliPortOpt, cliHostOpt, cliConfigOpt, cliTemplateOpt) =>
+    (portOpt, hostOpt, configOpt, templateOpt, numConfigsOpt).mapN {
+      (cliPortOpt, cliHostOpt, cliConfigOpt, cliTemplateOpt, cliNumConfigsOpt) =>
         for {
           baseConfig <- ConfigLoader.loadConfigServerConfig(cliConfigOpt)
 
           // Establish precedence: CLI > Config File
-          finalConfig = cliTemplateOpt
+          configWithCliTemplate = cliTemplateOpt
             .map(templatePath => baseConfig.copy(templatePath = templatePath))
             .getOrElse(baseConfig)
+
+          finalConfig = cliNumConfigsOpt
+            .map(numConfigs =>
+              configWithCliTemplate.copy(numConfigs = Some(numConfigs))
+            )
+            .getOrElse(configWithCliTemplate)
 
           templateService = new TemplateService(finalConfig)
           privilegedConfigService = new PrivilegedConfigService(
