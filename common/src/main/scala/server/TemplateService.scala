@@ -72,11 +72,10 @@ class TemplateService(config: ConfigServerConfig) {
       .flatMap(Stream.emits)
   }
 
-  private def streamCertContents(
+  def streamCertContents(
       dirs: Stream[IO, Path],
       fileName: String
-  ): Stream[IO, String]
-  ) = 
+  ): Stream[IO, String] =
     dirs
       .map(_ / "certs" / fileName)
       .evalFilter(Files[IO].exists)
