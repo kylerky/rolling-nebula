@@ -36,7 +36,24 @@ class TemplateService(config: ConfigServerConfig) {
         )
       )
 
-  private def getLatestConfigDirs: Stream[IO, Path] =
+  private def getLatestConfigDirs(limit: Option[Int]): Stream[IO, Path] = {
+    val effectiveLimit = limit match {
+      case Some(0) => None // 0 means all
+      case Some(-1) =>
+        config.numConfigs match {
+          case Some(0)   => None
+          case Some(n)   => Some(n)
+          case None      => Some(5) // Default if not specified in config
+        }
+      case Some(n) => Some(n)
+      case None =>
+        config.numConfigs match {
+          case Some(0)   => None
+          case Some(n)   => Some(n)
+          case None      => Some(5) // Default if not specified in config
+        }
+    }
+
     Stream
       .eval(
         Files[IO]
@@ -44,14 +61,22 @@ class TemplateService(config: ConfigServerConfig) {
           .filter(p => p.fileName.toString.startsWith("config_"))
           .compile
           .toList
-          .map(_.sortBy(_.fileName.toString).reverse.take(5))
+          .map { dirs =>
+            val sortedDirs = dirs.sortBy(_.fileName.toString).reverse
+            effectiveLimit match {
+              case Some(n) => sortedDirs.take(n)
+              case None    => sortedDirs
+            }
+          }
       )
       .flatMap(Stream.emits)
+  }
 
   private def streamCertContents(
       dirs: Stream[IO, Path],
       fileName: String
-  ): Stream[IO, String] =
+  ): Stream[IO, String]
+  ) = 
     dirs
       .map(_ / "certs" / fileName)
       .evalFilter(Files[IO].exists)
@@ -60,9 +85,10 @@ class TemplateService(config: ConfigServerConfig) {
 
   private def generateConfig(
       clientIpStr: String,
-      firewallType: String
+      firewallType: String,
+      limit: Option[Int]
   ): IO[String] = {
-    val latestDirsStream = getLatestConfigDirs
+    val latestDirsStream = getLatestConfigDirs(limit)
     for {
       (caCerts, hostCerts, baseJson) <- (
         streamCertContents(latestDirsStream, "ca.crt").compile.string,
@@ -123,11 +149,12 @@ class TemplateService(config: ConfigServerConfig) {
 
   private def processRequest(
       clientIp: Option[InetSocketAddress],
-      firewallType: String
+      firewallType: String,
+      limit: Option[Int]
   ): IO[Either[HttpError, String]] = {
     clientIp.map(_.getAddress.getHostAddress) match {
       case Some(ip) =>
-        generateConfig(ip, firewallType).attempt.map(
+        generateConfig(ip, firewallType, limit).attempt.map(
           _.leftMap(e => HttpError.InternalServerError(e.getMessage))
         )
       case None =>
@@ -142,12 +169,14 @@ class TemplateService(config: ConfigServerConfig) {
   }
 
   def getLabServerConfig(
-      clientIp: Option[InetSocketAddress]
+      clientIp: Option[InetSocketAddress],
+      limit: Option[Int]
   ): IO[Either[HttpError, String]] =
-    processRequest(clientIp, "lab_server")
+    processRequest(clientIp, "lab_server", limit)
 
   def getDefaultConfig(
-      clientIp: Option[InetSocketAddress]
+      clientIp: Option[InetSocketAddress],
+      limit: Option[Int]
   ): IO[Either[HttpError, String]] =
-    processRequest(clientIp, "default")
+    processRequest(clientIp, "default", limit)
 }
