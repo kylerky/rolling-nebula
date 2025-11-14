@@ -37,7 +37,7 @@ object ConfigLoader {
         ConfigFactory.parseFile(file).withFallback(ConfigFactory.load())
       case None => ConfigFactory.load()
     }
-    parser.decodeF[IO, CertRollerConfig](config.getConfig("cert-roller"))
+    parser.decodeF[IO, CertRollerConfig](config.getConfig("certRoller"))
   }
 
   def loadConfigServerConfig(
@@ -48,6 +48,6 @@ object ConfigLoader {
         ConfigFactory.parseFile(file).withFallback(ConfigFactory.load())
       case None => ConfigFactory.load()
     }
-    parser.decodeF[IO, ConfigServerConfig](config.getConfig("config-server"))
+    parser.decodeF[IO, ConfigServerConfig](config.getConfig("configServer"))
   }
 }
