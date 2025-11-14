@@ -89,14 +89,14 @@ object ConfigServerApp
 
           // Define Tapir routes
           labServerRoute = Http4sServerInterpreter[IO]().toRoutes(
-            Endpoints.labServerEndpoint.serverLogic(
-              templateService.getLabServerConfig
-            )
+            Endpoints.labServerEndpoint.serverLogic { case (remoteAddress, limit) =>
+              templateService.getLabServerConfig(remoteAddress, limit)
+            }
           )
           defaultRoute = Http4sServerInterpreter[IO]().toRoutes(
-            Endpoints.defaultEndpoint.serverLogic(
-              templateService.getDefaultConfig
-            )
+            Endpoints.defaultEndpoint.serverLogic { case (remoteAddress, limit) =>
+              templateService.getDefaultConfig(remoteAddress, limit)
+            }
           )
           privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
             Endpoints.privilegedConfigEndpoint.serverLogic {
