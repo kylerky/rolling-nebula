@@ -25,6 +25,8 @@ class ServerSuite extends CatsEffectSuite {
   test("Privileged endpoint should return 200 OK for privileged IP") {
     val fileSystem = new FileSystem {
       override def read(path: String): IO[String] = IO.pure("config content")
+      override def list(path: fs2.io.file.Path): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
+      override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(true)
     }
     val privilegedConfigService =
       new PrivilegedConfigService(config, fileSystem)
@@ -53,7 +55,7 @@ class ServerSuite extends CatsEffectSuite {
 
     val response = privilegedConfigRoute.orNotFound.run(request)
 
-    assertIO(response.map(_.status), Status.Ok)
+    assertIO(response.map(_.status), Status.Ok) *>
     assertIO(response.flatMap(_.as[String]), "config content")
   }
 
@@ -62,6 +64,8 @@ class ServerSuite extends CatsEffectSuite {
   ) {
     val fileSystem = new FileSystem {
       override def read(path: String): IO[String] = IO.pure("config content")
+      override def list(path: fs2.io.file.Path): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
+      override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(true)
     }
     val privilegedConfigService =
       new PrivilegedConfigService(config, fileSystem)
@@ -99,6 +103,8 @@ class ServerSuite extends CatsEffectSuite {
     val fileSystem = new FileSystem {
       override def read(path: String): IO[String] =
         IO.raiseError(new java.nio.file.NoSuchFileException(path))
+      override def list(path: fs2.io.file.Path): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
+      override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(false)
     }
     val privilegedConfigService =
       new PrivilegedConfigService(config, fileSystem)
