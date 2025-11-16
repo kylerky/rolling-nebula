@@ -5,8 +5,16 @@ import java.net.InetSocketAddress
 import com.teecertlabs.nebula.rolling.ConfigServerConfig
 import com.teecertlabs.nebula.rolling.server.Auth
 import com.teecertlabs.nebula.rolling.server.HttpError
+import sttp.tapir.Codec
+import sttp.tapir.CodecFormat
+import cats.implicits._ // Added for Either.catchNonFatal
 
 object Endpoints {
+
+  implicit val inetAddressCodec: Codec[String, java.net.InetAddress, CodecFormat.TextPlain] =
+    Codec.string.mapEither { s =>
+      Either.catchNonFatal(java.net.InetAddress.getByName(s)).leftMap(e => s"Invalid IP address: ${e.getMessage}")
+    }(_.getHostAddress)
 
   // Base endpoint definition
   private val baseEndpoint = endpoint.errorOut(HttpError.endpointOutput)
@@ -45,13 +53,13 @@ object Endpoints {
 
   // Privileged config endpoint
   val privilegedConfigEndpoint: PublicEndpoint[
-    (String, Option[InetSocketAddress]),
+    (java.net.InetAddress, Option[InetSocketAddress]),
     HttpError,
     String,
     Any
   ] =
     baseEndpoint.get
-      .in("privileged" / "config" / path[String]("hostname"))
+      .in("privileged" / "config" / path[java.net.InetAddress]("ip"))
       .in(extractFromRequest(_.connectionInfo.remote))
       .out(stringBody)
       .description(

@@ -28,18 +28,26 @@ class ServerSuite extends CatsEffectSuite {
       override def list(path: fs2.io.file.Path): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
       override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(true)
     }
+    // Create a mock TemplateService that uses the mock FileSystem
+    val mockTemplateService = new TemplateService(config, fileSystem) {
+      override def getDefaultConfig(
+          clientIp: Option[java.net.InetSocketAddress],
+          limit: Option[Int]
+      ):
+        IO[Either[HttpError, String]] = IO.pure(Right("config content")) // Return the expected content
+    }
     val privilegedConfigService =
-      new PrivilegedConfigService(config, fileSystem)
+      new PrivilegedConfigService(config, mockTemplateService)
     val privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
       Endpoints.privilegedConfigEndpoint.serverLogic {
-        case (hostname, remoteAddress) =>
-          privilegedConfigService.getConfig(remoteAddress, hostname)
+        case (ipFromPath, remoteAddress) =>
+          privilegedConfigService.getConfig(remoteAddress, ipFromPath)
       }
     )
 
     val request = Request[IO](
       method = Method.GET,
-      uri = uri"/privileged/config/myhost"
+      uri = uri"/privileged/config/192.168.1.1"
     ).withAttribute(
       Request.Keys.ConnectionInfo,
       Request.Connection(
@@ -59,26 +67,33 @@ class ServerSuite extends CatsEffectSuite {
     assertIO(response.flatMap(_.as[String]), "config content")
   }
 
-  test(
-    "Privileged endpoint should return 403 Forbidden for non-privileged IP"
-  ) {
-    val fileSystem = new FileSystem {
-      override def read(path: String): IO[String] = IO.pure("config content")
-      override def list(path: fs2.io.file.Path): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
-      override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(true)
-    }
-    val privilegedConfigService =
-      new PrivilegedConfigService(config, fileSystem)
-    val privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
-      Endpoints.privilegedConfigEndpoint.serverLogic {
-        case (hostname, remoteAddress) =>
-          privilegedConfigService.getConfig(remoteAddress, hostname)
-      }
-    )
-
+        test(
+          "Privileged endpoint should return 403 Forbidden for non-privileged IP"
+        ) {
+          val fileSystem = new FileSystem {
+            override def read(path: String): IO[String] = IO.pure("config content")
+            override def list(path: fs2.io.file.Path): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
+            override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(true)
+          }
+          // Create a mock TemplateService that uses the mock FileSystem
+          val mockTemplateService = new TemplateService(config, fileSystem) {
+            override def getDefaultConfig(
+                clientIp: Option[java.net.InetSocketAddress],
+                limit: Option[Int]
+            ): IO[Either[HttpError, String]] =
+              IO.pure(Right("config content")) // Return the expected content
+          }
+          val privilegedConfigService =
+            new PrivilegedConfigService(config, mockTemplateService)
+          val privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
+            Endpoints.privilegedConfigEndpoint.serverLogic {
+              case (ipFromPath, remoteAddress) =>
+                privilegedConfigService.getConfig(remoteAddress, ipFromPath)
+            }
+          )
     val request = Request[IO](
       method = Method.GET,
-      uri = uri"/privileged/config/myhost"
+      uri = uri"/privileged/config/192.168.1.1"
     ).withAttribute(
       Request.Keys.ConnectionInfo,
       Request.Connection(
@@ -97,27 +112,34 @@ class ServerSuite extends CatsEffectSuite {
     assertIO(response.map(_.status), Status.Forbidden)
   }
 
-  test(
-    "Privileged endpoint should return 404 Not Found for non-existent config"
-  ) {
-    val fileSystem = new FileSystem {
-      override def read(path: String): IO[String] =
-        IO.raiseError(new java.nio.file.NoSuchFileException(path))
-      override def list(path: fs2.io.file.Path): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
-      override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(false)
-    }
-    val privilegedConfigService =
-      new PrivilegedConfigService(config, fileSystem)
-    val privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
-      Endpoints.privilegedConfigEndpoint.serverLogic {
-        case (hostname, remoteAddress) =>
-          privilegedConfigService.getConfig(remoteAddress, hostname)
-      }
-    )
-
+        test(
+          "Privileged endpoint should return 404 Not Found for non-existent config"
+        ) {
+          val fileSystem = new FileSystem {
+            override def read(path: String): IO[String] =
+              IO.raiseError(new java.nio.file.NoSuchFileException(path))
+            override def list(path: fs2.io.file.Path): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
+            override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(false)
+          }
+          // Create a mock TemplateService that uses the mock FileSystem
+          val mockTemplateService = new TemplateService(config, fileSystem) {
+            override def getDefaultConfig(
+                clientIp: Option[java.net.InetSocketAddress],
+                limit: Option[Int]
+            ): IO[Either[HttpError, String]] =
+              IO.pure(Left(HttpError.NotFound("Configuration for host 'unknownhost' not found."))) // Simulate 404
+          }
+          val privilegedConfigService =
+            new PrivilegedConfigService(config, mockTemplateService)
+          val privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
+            Endpoints.privilegedConfigEndpoint.serverLogic {
+              case (ipFromPath, remoteAddress) =>
+                privilegedConfigService.getConfig(remoteAddress, ipFromPath)
+            }
+          )
     val request = Request[IO](
       method = Method.GET,
-      uri = uri"/privileged/config/unknownhost"
+      uri = uri"/privileged/config/192.168.1.1"
     ).withAttribute(
       Request.Keys.ConnectionInfo,
       Request.Connection(

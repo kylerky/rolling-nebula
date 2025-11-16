@@ -73,7 +73,7 @@ object ConfigServerApp
           templateService = new TemplateService(finalConfig, fileSystem)
           privilegedConfigService = new PrivilegedConfigService(
             finalConfig,
-            DefaultFileSystem()
+            templateService
           )
 
           serverHostStr = cliHostOpt.getOrElse(finalConfig.host)
@@ -109,8 +109,8 @@ object ConfigServerApp
           )
           privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
             Endpoints.privilegedConfigEndpoint.serverLogic {
-              case (hostname, remoteAddress) =>
-                privilegedConfigService.getConfig(remoteAddress, hostname)
+              case (ipFromPath, remoteAddress) =>
+                privilegedConfigService.getConfig(remoteAddress, ipFromPath)
             }
           )
 

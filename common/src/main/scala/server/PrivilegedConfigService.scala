@@ -2,33 +2,21 @@ package com.teecertlabs.nebula.rolling.server
 
 import cats.effect.IO
 import com.teecertlabs.nebula.rolling.ConfigServerConfig
-import com.teecertlabs.nebula.rolling.FileSystem
 import java.net.InetSocketAddress
+import java.net.InetAddress
 
 class PrivilegedConfigService(
     config: ConfigServerConfig,
-    fileSystem: FileSystem
+    templateService: TemplateService
 ) {
 
   def getConfig(
       remoteAddress: Option[InetSocketAddress],
-      hostname: String
+      ipFromPath: InetAddress
   ): IO[Either[HttpError, String]] = {
     if (Auth.isPrivilegedIp(config)(remoteAddress)) {
-      val filePath = s"${config.configDir}/$hostname.yaml"
-      fileSystem
-        .read(filePath)
-        .map[Either[HttpError, String]](Right(_))
-        .handleErrorWith {
-          case _: java.nio.file.NoSuchFileException =>
-            IO.pure(
-              Left(
-                HttpError
-                  .NotFound(s"Configuration for host '$hostname' not found.")
-              )
-            )
-          case e: Throwable => IO.raiseError(e)
-        }
+      val ipSocketAddress = new InetSocketAddress(ipFromPath, 0) // Port doesn't matter for IP extraction
+      templateService.getDefaultConfig(Some(ipSocketAddress), None) // Assuming 'default' firewall type and no limit
     } else {
       IO.pure(Left(HttpError.Unauthorized("Forbidden")))
     }
