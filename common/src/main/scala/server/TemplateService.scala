@@ -1,8 +1,9 @@
 package com.teecertlabs.nebula.rolling.server
 
+import com.teecertlabs.nebula.rolling.server.HttpError
 import cats.effect.IO
 import cats.implicits._
-import com.teecertlabs.nebula.rolling.ConfigServerConfig
+import com.teecertlabs.nebula.rolling.{ConfigServerConfig, FileSystem}
 import fs2.io.file.{Files, Path}
 import fs2.Stream
 import io.circe.Json
@@ -12,18 +13,15 @@ import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import java.net.InetSocketAddress
 
-class TemplateService(config: ConfigServerConfig) {
+class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
   implicit val logger: Logger[IO] = Slf4jLogger.getLogger[IO]
 
   private val templateFile = Path(config.templatePath)
   private val baseConfigDir = Path(config.configDir)
 
   private def loadTemplate: IO[Json] =
-    Files[IO]
-      .readAll(templateFile)
-      .through(fs2.text.utf8.decode)
-      .compile
-      .string
+    fileSystem
+      .read(config.templatePath)
       .flatMap(content =>
         IO.fromEither(
           parser
@@ -56,7 +54,7 @@ class TemplateService(config: ConfigServerConfig) {
 
     Stream
       .eval(
-        Files[IO]
+        fileSystem
           .list(baseConfigDir)
           .filter(p => p.fileName.toString.startsWith("config_"))
           .compile
@@ -78,8 +76,8 @@ class TemplateService(config: ConfigServerConfig) {
   ): Stream[IO, String] =
     dirs
       .map(_ / "certs" / fileName)
-      .evalFilter(Files[IO].exists)
-      .flatMap(path => Files[IO].readAll(path).through(fs2.text.utf8.decode))
+      .evalFilter(fileSystem.exists)
+      .evalMap(path => fileSystem.read(path.toString))
       .intersperse("\n")
 
   private def generateConfig(

@@ -69,7 +69,8 @@ object ConfigServerApp
             )
             .getOrElse(configWithCliTemplate)
 
-          templateService = new TemplateService(finalConfig)
+          fileSystem = new DefaultFileSystem()
+          templateService = new TemplateService(finalConfig, fileSystem)
           privilegedConfigService = new PrivilegedConfigService(
             finalConfig,
             DefaultFileSystem()
