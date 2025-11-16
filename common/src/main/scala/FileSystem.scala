@@ -9,6 +9,8 @@ import java.time.ZoneOffset
 
 trait FileSystem {
   def read(path: String): IO[String]
+  def list(path: Path): Stream[IO, Path]
+  def exists(path: Path): IO[Boolean]
 }
 
 object FileSystem {
@@ -46,4 +48,10 @@ object FileSystem {
 class DefaultFileSystem extends FileSystem {
   def read(path: String): IO[String] =
     Files[IO].readAll(Path(path)).through(fs2.text.utf8.decode).compile.string
+
+  def list(path: Path): Stream[IO, Path] =
+    Files[IO].list(path)
+
+  def exists(path: Path): IO[Boolean] =
+    Files[IO].exists(path)
 }
