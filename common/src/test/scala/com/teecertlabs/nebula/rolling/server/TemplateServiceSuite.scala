@@ -139,4 +139,33 @@ firewall:
         IO(fail(s"Expected a valid config, but got an error: $e"))
     }
   }
+
+  test("getTemplate should return NotFound for path traversal attempts") {
+    val mockConfig = ConfigServerConfig(
+      host = "localhost",
+      port = 8080,
+      templatesDir = "/tmp/templates",
+      configDir = "/tmp/configs",
+      pkiKeyPath = "/tmp/pki.key",
+      labServerInboundGroups = List.empty,
+      privilegedIps = List.empty,
+      numConfigs = Some(5)
+    )
+    val service = new TemplateService(mockConfig, new MockFileSystem)
+
+    // Attempt to traverse up from the templatesDir
+    val result = service.getTemplate("../secret.txt")
+
+    result.flatMap {
+      case Left(HttpError.NotFound(msg)) =>
+        IO(
+          assert(
+            msg.contains("Invalid template name"),
+            "Error message should indicate an invalid template name"
+          )
+        )
+      case other =>
+        IO(fail(s"Expected NotFound, but got $other"))
+    }
+  }
 }

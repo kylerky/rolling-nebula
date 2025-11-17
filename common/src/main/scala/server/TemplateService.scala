@@ -13,11 +13,50 @@ import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import java.net.InetSocketAddress
 
+import cats.data.EitherT
+import java.nio.file.NoSuchFileException
+
 class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
   implicit val logger: Logger[IO] = Slf4jLogger.getLogger[IO]
 
   private val templatesDir = Path(config.templatesDir)
   private val baseConfigDir = Path(config.configDir)
+
+  def getTemplate(templateName: String): IO[Either[HttpError, String]] = {
+    def getRealPath(p: Path): IO[Either[HttpError, java.nio.file.Path]] =
+      IO.blocking(p.toNioPath.toRealPath()).attempt.map {
+        case Right(path) => Right(path)
+        case Left(_: NoSuchFileException) =>
+          Left(HttpError.NotFound(s"Template '$templateName' not found."))
+        case Left(e) =>
+          Left(
+            HttpError.InternalServerError(
+              s"Could not resolve path: ${e.getMessage}"
+            )
+          )
+      }
+
+    val result: EitherT[IO, HttpError, String] = for {
+      _ <- EitherT.cond[IO](
+        !templateName.contains("..") && !templateName.contains("/") && !templateName
+          .contains("\\"),
+        (),
+        HttpError.NotFound("Invalid template name provided.")
+      )
+      requestedPath = templatesDir / s"$templateName.yaml"
+      realTemplatesDir  <- EitherT(getRealPath(templatesDir))
+      realRequestedPath <- EitherT(getRealPath(requestedPath))
+      _ <- EitherT.cond[IO](
+        realRequestedPath.startsWith(realTemplatesDir),
+        (),
+        HttpError.NotFound("Invalid template name (path traversal attempt).")
+      )
+      content <- EitherT(
+        fileSystem.read(requestedPath.toString).map(Right(_))
+      )
+    } yield content
+    result.value
+  }
 
   private def getLatestConfigDirs(limit: Option[Int]): Stream[IO, Path] = {
     val effectiveLimit = limit match {
