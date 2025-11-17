@@ -33,7 +33,7 @@ object CertRollerApp
     (baseDir, cliConfigOpt) =>
       val certGeneration = for {
         config <- ConfigLoader.loadCertRollerConfig(cliConfigOpt)
-        pubDir = baseDir / config.pubDir
+        pubDir = Path(config.pubDir)
         tempDir <- FileSystem.createTempDir(baseDir, tempDirName)
         _ <- logger.info(s"Created temporary directory: $tempDir")
         _ <- NebulaCert.generateCA(config.caName, tempDir)
