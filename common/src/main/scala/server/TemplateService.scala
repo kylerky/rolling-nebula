@@ -68,7 +68,8 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
   def getConfig(
       templateName: String,
       clientIp: Option[InetSocketAddress],
-      limit: Option[Int]
+      limit: Option[Int],
+      allowInboundGroups: Option[List[String]]
   ): IO[Either[HttpError, String]] = {
     clientIp.map(
       _.getAddress.getHostAddress
@@ -103,6 +104,26 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
               logger.warn(s"No certificates found for IP: $ip")
             else IO.unit
 
+          // Add dynamic firewall rules
+          jsonWithFirewallRules = allowInboundGroups.getOrElse(List.empty) match {
+            case Nil => baseJson
+            case groups =>
+              val newRules = groups.map { groupName =>
+                Json.obj(
+                  "port" -> Json.fromString("any"),
+                  "proto" -> Json.fromString("any"),
+                  "groups" -> Json.fromValues(List(Json.fromString(groupName)))
+                )
+              }
+              
+              baseJson.hcursor
+                .downField("firewall")
+                .downField("inbound")
+                .withFocus(inbound => Json.fromValues(inbound.asArray.getOrElse(Vector.empty) ++ newRules))
+                .top
+                .getOrElse(baseJson)
+          }
+
           pkiJson = Json.obj(
             "pki" -> Json.obj(
               "ca" -> Json.fromString(caCerts),
@@ -111,7 +132,7 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
             )
           )
 
-          finalJson = baseJson
+          finalJson = jsonWithFirewallRules
             .deepMerge(pkiJson)
         } yield printer.print(finalJson)).attempt
           .map(

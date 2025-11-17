@@ -12,6 +12,8 @@ class PrivilegedConfigService(
 
   def getConfig(
       remoteAddress: Option[InetSocketAddress],
+      allowInboundGroups: Option[List[String]],
+      limit: Option[Int],
       ipFromPath: InetAddress
   ): IO[Either[HttpError, String]] = {
     if (Auth.isPrivilegedIp(config)(remoteAddress)) {
@@ -22,8 +24,9 @@ class PrivilegedConfigService(
       templateService.getConfig(
         "default",
         Some(ipSocketAddress),
-        None
-      ) // Assuming 'default' firewall type and no limit
+        limit,
+        allowInboundGroups
+      )
     } else {
       IO.pure(Left(HttpError.Unauthorized("Forbidden")))
     }

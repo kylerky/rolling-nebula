@@ -18,7 +18,8 @@ class PrivilegedConfigServiceSuite extends CatsEffectSuite {
     override def getConfig(
         templateName: String,
         clientIp: Option[java.net.InetSocketAddress],
-        limit: Option[Int]
+        limit: Option[Int],
+        allowInboundGroups: Option[List[String]]
     ): IO[Either[HttpError, String]] =
       IO.pure(
         Right(
@@ -64,7 +65,7 @@ class PrivilegedConfigServiceSuite extends CatsEffectSuite {
 
     // The route in Endpoints.scala will extract the IP from the path and pass it to the service
     // For this unit test, we directly call the service's getConfig method
-    service.getConfig(privilegedRemoteAddress, testIp.toInetAddress).flatMap {
+    service.getConfig(privilegedRemoteAddress, None, None, testIp.toInetAddress).flatMap {
       case Right(yamlString) =>
         IO(
           assertEquals(
@@ -90,14 +91,44 @@ class PrivilegedConfigServiceSuite extends CatsEffectSuite {
       Some(new java.net.InetSocketAddress("10.0.0.1", 12345))
 
     service
-      .getConfig(nonPrivilegedRemoteAddress, testIp.toInetAddress)
-      .flatMap {
-        case Right(_) =>
-          IO(fail("Expected Unauthorized error, but got a valid config"))
-        case Left(HttpError.Unauthorized(msg)) =>
-          IO(assertEquals(msg, "Forbidden"))
-        case Left(e) =>
-          IO(fail(s"Expected Unauthorized error, but got unexpected error: $e"))
+      .getConfig(nonPrivilegedRemoteAddress, None, None, testIp.toInetAddress)
+            .flatMap {
+              case Right(_) =>
+                IO(fail("Expected Unauthorized error, but got a valid config"))
+              case Left(HttpError.Unauthorized(msg)) =>
+                IO(assertEquals(msg, "Forbidden"))
+              case Left(e) =>
+                IO(fail(s"Expected Unauthorized error, but got unexpected error: $e"))
+            }
+        }
+  test(
+    "PrivilegedConfigService should pass allowInboundGroups to TemplateService"
+  ) {
+    val expectedGroups = Some(List("privileged-group"))
+
+    val mockTemplateService =
+      new MockTemplateService(mockConfig, mockFileSystem) {
+        override def getConfig(
+            templateName: String,
+            clientIp: Option[java.net.InetSocketAddress],
+            limit: Option[Int],
+            allowInboundGroups: Option[List[String]]
+        ): IO[Either[HttpError, String]] = {
+          assertEquals(allowInboundGroups, expectedGroups)
+          IO.pure(Right("mock content"))
+        }
       }
+    val service = new PrivilegedConfigService(mockConfig, mockTemplateService)
+
+    val testIp = ip"192.168.1.1"
+    val privilegedRemoteAddress =
+      Some(new java.net.InetSocketAddress("127.0.0.1", 12345))
+
+    service.getConfig(privilegedRemoteAddress, expectedGroups, None, testIp.toInetAddress).flatMap {
+      case Right(content) =>
+        IO(assertEquals(content, "mock content"))
+      case Left(e) =>
+        IO(fail(s"Expected a valid config, but got an error: $e"))
+    }
   }
 }

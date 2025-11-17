@@ -35,7 +35,8 @@ class ServerSuite extends CatsEffectSuite {
       override def getConfig(
           templateName: String,
           clientIp: Option[java.net.InetSocketAddress],
-          limit: Option[Int]
+          limit: Option[Int],
+          allowInboundGroups: Option[List[String]]
       ): IO[Either[HttpError, String]] =
         IO.pure(Right("config content")) // Return the expected content
     }
@@ -43,8 +44,8 @@ class ServerSuite extends CatsEffectSuite {
       new PrivilegedConfigService(config, mockTemplateService)
     val privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
       Endpoints.privilegedConfigEndpoint.serverLogic {
-        case (ipFromPath, remoteAddress) =>
-          privilegedConfigService.getConfig(remoteAddress, ipFromPath)
+        case (remoteAddress, allowInboundGroups, limit, ipFromPath) =>
+          privilegedConfigService.getConfig(remoteAddress, allowInboundGroups, limit, ipFromPath)
       }
     )
 
@@ -85,7 +86,8 @@ class ServerSuite extends CatsEffectSuite {
       override def getConfig(
           templateName: String,
           clientIp: Option[java.net.InetSocketAddress],
-          limit: Option[Int]
+          limit: Option[Int],
+          allowInboundGroups: Option[List[String]]
       ): IO[Either[HttpError, String]] =
         IO.pure(Right("config content")) // Return the expected content
     }
@@ -93,8 +95,8 @@ class ServerSuite extends CatsEffectSuite {
       new PrivilegedConfigService(config, mockTemplateService)
     val privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
       Endpoints.privilegedConfigEndpoint.serverLogic {
-        case (ipFromPath, remoteAddress) =>
-          privilegedConfigService.getConfig(remoteAddress, ipFromPath)
+        case (remoteAddress, allowInboundGroups, limit, ipFromPath) =>
+          privilegedConfigService.getConfig(remoteAddress, allowInboundGroups, limit, ipFromPath)
       }
     )
     val request = Request[IO](
@@ -134,7 +136,8 @@ class ServerSuite extends CatsEffectSuite {
       override def getConfig(
           templateName: String,
           clientIp: Option[java.net.InetSocketAddress],
-          limit: Option[Int]
+          limit: Option[Int],
+          allowInboundGroups: Option[List[String]]
       ): IO[Either[HttpError, String]] =
         IO.pure(
           Left(
@@ -148,8 +151,8 @@ class ServerSuite extends CatsEffectSuite {
       new PrivilegedConfigService(config, mockTemplateService)
     val privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
       Endpoints.privilegedConfigEndpoint.serverLogic {
-        case (ipFromPath, remoteAddress) =>
-          privilegedConfigService.getConfig(remoteAddress, ipFromPath)
+        case (remoteAddress, allowInboundGroups, limit, ipFromPath) =>
+          privilegedConfigService.getConfig(remoteAddress, allowInboundGroups, limit, ipFromPath)
       }
     )
     val request = Request[IO](
@@ -171,5 +174,47 @@ class ServerSuite extends CatsEffectSuite {
     val response = privilegedConfigRoute.orNotFound.run(request)
 
     assertIO(response.map(_.status), Status.NotFound)
+  }
+  
+  test(
+    "Default endpoint should handle allow_inbound_groups parameter"
+  ) {
+    val expectedGroups = List("testgroup1", "testgroup2")
+    val fileSystem = new FileSystem {
+      override def read(path: String): IO[String] = IO.pure("config content")
+      override def list(
+          path: fs2.io.file.Path
+      ): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
+      override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(true)
+    }
+
+    val mockTemplateService = new TemplateService(config, fileSystem) {
+      override def getConfig(
+          templateName: String,
+          clientIp: Option[java.net.InetSocketAddress],
+          limit: Option[Int],
+          allowInboundGroups: Option[List[String]]
+      ): IO[Either[HttpError, String]] = {
+        assertEquals(templateName, "default")
+        assertEquals(allowInboundGroups, Some(expectedGroups))
+        IO.pure(Right("config content"))
+      }
+    }
+
+    val defaultRoute = Http4sServerInterpreter[IO]().toRoutes(
+      Endpoints.defaultEndpoint.serverLogic {
+        case (remoteAddress, allowInboundGroups, limit) =>
+          mockTemplateService.getConfig("default", remoteAddress, limit, allowInboundGroups)
+      }
+    )
+
+    val request = Request[IO](
+      method = Method.GET,
+      uri = uri"/config/default?allow_inbound_groups=testgroup1,testgroup2"
+    )
+
+    val response = defaultRoute.orNotFound.run(request)
+    assertIO(response.map(_.status), Status.Ok) *>
+    assertIO(response.flatMap(_.as[String]), "config content")
   }
 }

@@ -19,20 +19,27 @@ object Endpoints {
         .leftMap(e => s"Invalid IP address: ${e.getMessage}")
     }(_.getHostAddress)
 
-  // Base endpoint definition
-  private val baseEndpoint = endpoint.errorOut(HttpError.endpointOutput)
+  // Reusable input for the allow_inbound_groups query parameter
+  private val allowInboundGroupsInput: EndpointInput[Option[List[String]]] =
+    query[Option[String]]("allow_inbound_groups")
+      .map(_.map(_.split(',').toList.filter(_.nonEmpty)))(_.map(_.mkString(",")))
+
+  // Base endpoint definition with common inputs
+  private val baseEndpoint = endpoint
+    .errorOut(HttpError.endpointOutput)
+    .in(extractFromRequest(_.connectionInfo.remote))
+    .in(allowInboundGroupsInput)
+    .in(query[Option[Int]]("limit"))
 
   // /config/lab_server endpoint
   val labServerEndpoint: PublicEndpoint[
-    (Option[InetSocketAddress], Option[Int]),
+    (Option[InetSocketAddress], Option[List[String]], Option[Int]),
     HttpError,
     String,
     Any
   ] =
     baseEndpoint.get
       .in("config" / "lab_server")
-      .in(extractFromRequest(_.connectionInfo.remote))
-      .in(query[Option[Int]]("limit"))
       .out(stringBody)
       .description(
         "Serves Nebula configuration for lab servers with specific firewall rules."
@@ -40,15 +47,13 @@ object Endpoints {
 
   // /config/default endpoint
   val defaultEndpoint: PublicEndpoint[
-    (Option[InetSocketAddress], Option[Int]),
+    (Option[InetSocketAddress], Option[List[String]], Option[Int]),
     HttpError,
     String,
     Any
   ] =
     baseEndpoint.get
       .in("config" / "default")
-      .in(extractFromRequest(_.connectionInfo.remote))
-      .in(query[Option[Int]]("limit"))
       .out(stringBody)
       .description(
         "Serves default Nebula configuration with standard firewall rules."
@@ -56,14 +61,13 @@ object Endpoints {
 
   // Privileged config endpoint
   val privilegedConfigEndpoint: PublicEndpoint[
-    (java.net.InetAddress, Option[InetSocketAddress]),
+    (Option[InetSocketAddress], Option[List[String]], Option[Int], java.net.InetAddress),
     HttpError,
     String,
     Any
   ] =
     baseEndpoint.get
       .in("privileged" / "config" / path[java.net.InetAddress]("ip"))
-      .in(extractFromRequest(_.connectionInfo.remote))
       .out(stringBody)
       .description(
         "Serves host-specific Nebula configuration for privileged access."
