@@ -10,7 +10,8 @@ class TemplateServiceSuite extends CatsEffectSuite {
 
   // Mock FileSystem for testing
   class MockFileSystem extends FileSystem {
-    override def read(path: String): IO[String] = IO.pure(s"Mock content for $path")
+    override def read(path: String): IO[String] =
+      IO.pure(s"Mock content for $path")
     override def list(path: Path): Stream[IO, Path] = Stream.empty
     override def exists(path: Path): IO[Boolean] = IO.pure(false)
   }
@@ -61,7 +62,9 @@ pki:
 
     result.flatMap {
       case Right(yamlString) =>
-        IO(assert(yamlString.contains("pki:"), "YAML should contain pki section"))
+        IO(
+          assert(yamlString.contains("pki:"), "YAML should contain pki section")
+        )
       case Left(e) =>
         e match {
           case HttpError.InternalServerError(msg) =>

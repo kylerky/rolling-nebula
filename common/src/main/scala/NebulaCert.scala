@@ -27,6 +27,43 @@ object NebulaCert {
     println(s"CA generation result: $result")
   }
 
+  def sign(
+      name: String,
+      inPub: Path,
+      ip: String,
+      groups: List[String],
+      caCrt: Path,
+      caKey: Path,
+      outCrt: Path,
+      unsafeNetworks: Option[List[String]]
+  ): Seq[String] = {
+    val baseCommand = Seq(
+      "nebula-cert",
+      "sign",
+      "-name",
+      name,
+      "-in-pub",
+      inPub.toString,
+      "-ip",
+      ip,
+      "-groups",
+      groups.mkString(","),
+      "-ca-crt",
+      caCrt.toString,
+      "-ca-key",
+      caKey.toString,
+      "-out-crt",
+      outCrt.toString
+    )
+
+    val unsafeRoutesCommand = unsafeNetworks
+      .filter(_.nonEmpty)
+      .map(routes => Seq("-unsafe-routes", routes.mkString(",")))
+      .getOrElse(Seq.empty)
+
+    baseCommand ++ unsafeRoutesCommand
+  }
+
   def signHostKey(
       caCrt: Path,
       caKey: Path,
@@ -43,23 +80,15 @@ object NebulaCert {
     for {
       _ <- Files[IO].createDirectories(certsDir)
       _ <- IO {
-        val command = Seq(
-          "nebula-cert",
-          "sign",
-          "-ca-crt",
-          caCrt.toString,
-          "-ca-key",
-          caKey.toString,
-          "-in-pub",
-          pubKey.toString,
-          "-name",
+        val command = sign(
           hostConfig.name,
-          "-ip",
+          pubKey,
           hostConfig.ip,
-          "-groups",
-          hostConfig.groups.mkString(","),
-          "-out-crt",
-          certFile.toString
+          hostConfig.groups,
+          caCrt,
+          caKey,
+          certFile,
+          hostConfig.unsafeNetworks
         )
         val result = command.!!
         println(s"Signing result for $hostName: $result")

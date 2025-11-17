@@ -7,7 +7,12 @@ import com.typesafe.config.{Config, ConfigFactory}
 import fs2.io.file.Path
 import java.io.File
 
-case class HostConfig(name: String, ip: String, groups: List[String])
+case class HostConfig(
+    name: String,
+    ip: String,
+    groups: List[String],
+    unsafeNetworks: Option[List[String]]
+)
 
 // Cert Roller Configuration
 case class CertRollerConfig(
