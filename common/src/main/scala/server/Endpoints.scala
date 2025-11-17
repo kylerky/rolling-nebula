@@ -22,7 +22,9 @@ object Endpoints {
   // Reusable input for the allow_inbound_groups query parameter
   private val allowInboundGroupsInput: EndpointInput[Option[List[String]]] =
     query[Option[String]]("allow_inbound_groups")
-      .map(_.map(_.split(',').toList.filter(_.nonEmpty)))(_.map(_.mkString(",")))
+      .map(_.map(_.split(',').toList.filter(_.nonEmpty)))(
+        _.map(_.mkString(","))
+      )
 
   // Base endpoint definition with common inputs
   private val baseEndpoint = endpoint
@@ -45,7 +47,12 @@ object Endpoints {
 
   // Privileged config endpoint
   val privilegedConfigEndpoint: PublicEndpoint[
-    (Option[InetSocketAddress], Option[List[String]], Option[Int], java.net.InetAddress),
+    (
+        Option[InetSocketAddress],
+        Option[List[String]],
+        Option[Int],
+        java.net.InetAddress
+    ),
     HttpError,
     String,
     Any

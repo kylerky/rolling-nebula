@@ -25,7 +25,7 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
   def getTemplate(templateName: String): IO[Either[HttpError, String]] = {
     def getRealPath(p: Path): IO[Either[HttpError, java.nio.file.Path]] =
       IO.blocking(p.toNioPath.toRealPath()).attempt.map {
-        case Right(path) => Right(path)
+        case Right(path)                  => Right(path)
         case Left(_: NoSuchFileException) =>
           Left(HttpError.NotFound(s"Template '$templateName' not found."))
         case Left(e) =>
@@ -38,13 +38,15 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
 
     val result: EitherT[IO, HttpError, String] = for {
       _ <- EitherT.cond[IO](
-        !templateName.contains("..") && !templateName.contains("/") && !templateName
+        !templateName.contains("..") && !templateName.contains(
+          "/"
+        ) && !templateName
           .contains("\\"),
         (),
         HttpError.NotFound("Invalid template name provided.")
       )
       requestedPath = templatesDir / s"$templateName.yaml"
-      realTemplatesDir  <- EitherT(getRealPath(templatesDir))
+      realTemplatesDir <- EitherT(getRealPath(templatesDir))
       realRequestedPath <- EitherT(getRealPath(requestedPath))
       _ <- EitherT.cond[IO](
         realRequestedPath.startsWith(realTemplatesDir),
@@ -144,8 +146,10 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
             else IO.unit
 
           // Add dynamic firewall rules
-          jsonWithFirewallRules = allowInboundGroups.getOrElse(List.empty) match {
-            case Nil => baseJson
+          jsonWithFirewallRules = allowInboundGroups.getOrElse(
+            List.empty
+          ) match {
+            case Nil    => baseJson
             case groups =>
               val newRules = groups.map { groupName =>
                 Json.obj(
@@ -154,11 +158,15 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
                   "groups" -> Json.fromValues(List(Json.fromString(groupName)))
                 )
               }
-              
+
               baseJson.hcursor
                 .downField("firewall")
                 .downField("inbound")
-                .withFocus(inbound => Json.fromValues(inbound.asArray.getOrElse(Vector.empty) ++ newRules))
+                .withFocus(inbound =>
+                  Json.fromValues(
+                    inbound.asArray.getOrElse(Vector.empty) ++ newRules
+                  )
+                )
                 .top
                 .getOrElse(baseJson)
           }
@@ -186,4 +194,5 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
           )
         )
     }
-  }}
+  }
+}
