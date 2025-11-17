@@ -31,33 +31,17 @@ object Endpoints {
     .in(allowInboundGroupsInput)
     .in(query[Option[Int]]("limit"))
 
-  // /config/lab_server endpoint
-  val labServerEndpoint: PublicEndpoint[
-    (Option[InetSocketAddress], Option[List[String]], Option[Int]),
+  // /config/{templateName} endpoint
+  val unifiedTemplateEndpoint: PublicEndpoint[
+    (Option[InetSocketAddress], Option[List[String]], Option[Int], String),
     HttpError,
     String,
     Any
   ] =
     baseEndpoint.get
-      .in("config" / "lab_server")
+      .in("config" / path[String]("templateName"))
       .out(stringBody)
-      .description(
-        "Serves Nebula configuration for lab servers with specific firewall rules."
-      )
-
-  // /config/default endpoint
-  val defaultEndpoint: PublicEndpoint[
-    (Option[InetSocketAddress], Option[List[String]], Option[Int]),
-    HttpError,
-    String,
-    Any
-  ] =
-    baseEndpoint.get
-      .in("config" / "default")
-      .out(stringBody)
-      .description(
-        "Serves default Nebula configuration with standard firewall rules."
-      )
+      .description("Serves a Nebula configuration from a named template.")
 
   // Privileged config endpoint
   val privilegedConfigEndpoint: PublicEndpoint[

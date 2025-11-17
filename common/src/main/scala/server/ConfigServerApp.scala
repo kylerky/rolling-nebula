@@ -51,53 +51,32 @@ object ConfigServerApp
           cliConfigOpt,
           cliNumConfigsOpt
       ) =>
-        for {
-          baseConfig <- ConfigLoader.loadConfigServerConfig(cliConfigOpt)
+        // All these are pure values, not IO effects, so they can be defined outside the for-comprehension
+        val fileSystem = new DefaultFileSystem()
 
-          // Establish precedence: CLI > Config File
-          finalConfig = cliNumConfigsOpt
+        // This part needs to be an IO[ExitCode]
+        ConfigLoader.loadConfigServerConfig(cliConfigOpt).flatMap { baseConfig =>
+          val finalConfig = cliNumConfigsOpt
             .map(numConfigs => baseConfig.copy(numConfigs = Some(numConfigs)))
             .getOrElse(baseConfig)
 
-          fileSystem = new DefaultFileSystem()
-          templateService = new TemplateService(finalConfig, fileSystem)
-          privilegedConfigService = new PrivilegedConfigService(
+          val templateService = new TemplateService(finalConfig, fileSystem)
+          val privilegedConfigService = new PrivilegedConfigService(
             finalConfig,
             templateService
           )
 
-          serverHostStr = cliHostOpt.getOrElse(finalConfig.host)
-          serverPortInt = cliPortOpt.getOrElse(finalConfig.port)
-
-          serverHost <- Host
-            .fromString(serverHostStr)
-            .liftTo[IO](
-              new IllegalArgumentException(
-                s"Invalid host specified: $serverHostStr"
-              )
-            )
-          http4sPort <- Port
-            .fromInt(serverPortInt)
-            .liftTo[IO](
-              new IllegalArgumentException(
-                s"Invalid port number specified: $serverPortInt"
-              )
-            )
+          val serverHostStr = cliHostOpt.getOrElse(finalConfig.host)
+          val serverPortInt = cliPortOpt.getOrElse(finalConfig.port)
 
           // Define Tapir routes
-          labServerRoute = Http4sServerInterpreter[IO]().toRoutes(
-            Endpoints.labServerEndpoint.serverLogic {
-              case (remoteAddress, allowInboundGroups, limit) =>
-                templateService.getConfig("lab_server", remoteAddress, limit, allowInboundGroups)
+          val unifiedTemplateRoute = Http4sServerInterpreter[IO]().toRoutes(
+            Endpoints.unifiedTemplateEndpoint.serverLogic {
+              case (remoteAddress, allowInboundGroups, limit, templateName) =>
+                templateService.getConfig(templateName, remoteAddress, limit, allowInboundGroups)
             }
           )
-          defaultRoute = Http4sServerInterpreter[IO]().toRoutes(
-            Endpoints.defaultEndpoint.serverLogic {
-              case (remoteAddress, allowInboundGroups, limit) =>
-                templateService.getConfig("default", remoteAddress, limit, allowInboundGroups)
-            }
-          )
-          privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
+          val privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
             Endpoints.privilegedConfigEndpoint.serverLogic {
               case (remoteAddress, allowInboundGroups, limit, ipFromPath) =>
                 privilegedConfigService.getConfig(remoteAddress, allowInboundGroups, limit, ipFromPath)
@@ -105,25 +84,43 @@ object ConfigServerApp
           )
 
           // Combine routes
-          httpApp =
-            (labServerRoute <+> defaultRoute <+> privilegedConfigRoute).orNotFound
+          val httpApp =
+            (unifiedTemplateRoute <+> privilegedConfigRoute).orNotFound
 
           // Add http4s logging
-          loggedHttpApp = Http4sLogger.httpApp(
+          val loggedHttpApp = Http4sLogger.httpApp(
             logHeaders = true,
             logBody = false
           )(httpApp)
 
-          _ <- EmberServerBuilder
-            .default[IO]
-            .withHost(serverHost)
-            .withPort(http4sPort)
-            .withHttpApp(loggedHttpApp)
-            .build
-            .use { server =>
-              logger.info(s"Config Server started at ${server.address}") *>
-                IO.never // Keep the server running indefinitely
-            }
-        } yield ExitCode.Success
+          // Now, the IO effects for serverHost and http4sPort
+          for {
+            serverHost <- Host
+              .fromString(serverHostStr)
+              .liftTo[IO](
+                new IllegalArgumentException(
+                  s"Invalid host specified: $serverHostStr"
+                )
+              )
+            http4sPort <- Port
+              .fromInt(serverPortInt)
+              .liftTo[IO](
+                new IllegalArgumentException(
+                  s"Invalid port number specified: $serverPortInt"
+                )
+              )
+            _ <- EmberServerBuilder
+              .default[IO]
+              .withHost(serverHost)
+              .withPort(http4sPort)
+              .withHttpApp(loggedHttpApp)
+              .build
+              .use { server =>
+                logger.info(s"Config Server started at ${server.address}") *>
+                  IO.never // Keep the server running indefinitely
+              }
+          } yield ExitCode.Success
+        }
     }
-}
+
+    }
