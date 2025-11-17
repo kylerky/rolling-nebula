@@ -72,10 +72,10 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
 
   def streamCertContents(
       dirs: Stream[IO, Path],
-      fileName: String
+      fileName: Path
   ): Stream[IO, String] =
     dirs
-      .map(_ / "certs" / fileName)
+      .map(_ / fileName)
       .evalFilter(fileSystem.exists)
       .evalMap(path => fileSystem.read(path.toString))
       .intersperse("\n")
@@ -88,10 +88,10 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
     val latestDirsStream = getLatestConfigDirs(limit)
     for {
       (caCerts, hostCerts, baseJson) <- (
-        streamCertContents(latestDirsStream, "ca.crt").compile.string,
+        streamCertContents(latestDirsStream, Path("ca.crt")).compile.string,
         streamCertContents(
           latestDirsStream,
-          s"$clientIpStr.crt"
+          Path("certs") / s"$clientIpStr.crt"
         ).compile.string,
         loadTemplate
       ).parTupled
