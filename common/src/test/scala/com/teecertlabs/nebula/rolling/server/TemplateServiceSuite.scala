@@ -16,30 +16,27 @@ class TemplateServiceSuite extends CatsEffectSuite {
     override def exists(path: Path): IO[Boolean] = IO.pure(false)
   }
 
-  test("TemplateService should be instantiated with FileSystem") {
-    val mockConfig = ConfigServerConfig(
-      host = "localhost",
-      port = 8080,
-      templatePath = "/tmp/template.yaml",
-      configDir = "/tmp/configs",
-      pkiKeyPath = "/tmp/pki.key",
-      labServerInboundGroups = List.empty,
-      privilegedIps = List.empty,
-      numConfigs = Some(5)
-    )
-    val mockFileSystem = new MockFileSystem()
-    val service = new TemplateService(mockConfig, mockFileSystem)
-    assert(service != null, "TemplateService should be instantiated")
-  }
-  test("getDefaultConfig should return a valid YAML configuration") {
-    val templateContent = """
+  test("getConfig should return a valid YAML configuration for default template") {
+    val defaultTemplateContent = """
 pki:
   ca: ""
   cert: ""
   key: ""
+firewall:
+  inbound:
+    - proto: icmp
+      port: any
+      host: any
+  outbound:
+    - port: any
+      proto: any
+      host: any
 """
     val mockFileSystem = new MockFileSystem {
-      override def read(path: String): IO[String] = IO.pure(templateContent)
+      override def read(path: String): IO[String] = path match {
+        case "/tmp/templates/default.yaml" => IO.pure(defaultTemplateContent)
+        case _                             => IO.pure(s"Mock content for $path")
+      }
       override def list(path: Path): Stream[IO, Path] = Stream.empty
       override def exists(path: Path): IO[Boolean] = IO.pure(true)
     }
@@ -47,7 +44,7 @@ pki:
     val mockConfig = ConfigServerConfig(
       host = "localhost",
       port = 8080,
-      templatePath = "/tmp/template.yaml",
+      templatesDir = "/tmp/templates",
       configDir = "/tmp/configs",
       pkiKeyPath = "/tmp/pki.key",
       labServerInboundGroups = List.empty,
@@ -58,12 +55,15 @@ pki:
     val service = new TemplateService(mockConfig, mockFileSystem)
     val clientIp = Some(new java.net.InetSocketAddress("1.2.3.4", 12345))
 
-    val result = service.getDefaultConfig(clientIp, None)
+    val result = service.getConfig("default", clientIp, None)
 
     result.flatMap {
       case Right(yamlString) =>
         IO(
           assert(yamlString.contains("pki:"), "YAML should contain pki section")
+        )
+        IO(
+          assert(yamlString.contains("proto: icmp"), "YAML should contain icmp firewall rule")
         )
       case Left(e) =>
         e match {

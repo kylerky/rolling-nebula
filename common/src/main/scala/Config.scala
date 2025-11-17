@@ -20,7 +20,7 @@ case class CertRollerConfig(
 case class ConfigServerConfig(
     host: String,
     port: Int,
-    templatePath: String,
+    templatesDir: String,
     pkiKeyPath: String,
     configDir: String,
     labServerInboundGroups: List[String],

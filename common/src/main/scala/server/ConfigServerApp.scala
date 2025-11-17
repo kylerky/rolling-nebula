@@ -36,9 +36,6 @@ object ConfigServerApp
     .option[String]("config", help = "Path to the configuration file.")
     .map(new File(_))
     .orNone
-  val templateOpt: Opts[Option[String]] = Opts
-    .option[String]("template", help = "Path to the template file.")
-    .orNone
   val numConfigsOpt: Opts[Option[Int]] = Opts
     .option[Int](
       "num-configs",
@@ -47,27 +44,20 @@ object ConfigServerApp
     .orNone
 
   override def app: Opts[IO[ExitCode]] =
-    (portOpt, hostOpt, configOpt, templateOpt, numConfigsOpt).mapN {
+    (portOpt, hostOpt, configOpt, numConfigsOpt).mapN {
       (
           cliPortOpt,
           cliHostOpt,
           cliConfigOpt,
-          cliTemplateOpt,
           cliNumConfigsOpt
       ) =>
         for {
           baseConfig <- ConfigLoader.loadConfigServerConfig(cliConfigOpt)
 
           // Establish precedence: CLI > Config File
-          configWithCliTemplate = cliTemplateOpt
-            .map(templatePath => baseConfig.copy(templatePath = templatePath))
-            .getOrElse(baseConfig)
-
           finalConfig = cliNumConfigsOpt
-            .map(numConfigs =>
-              configWithCliTemplate.copy(numConfigs = Some(numConfigs))
-            )
-            .getOrElse(configWithCliTemplate)
+            .map(numConfigs => baseConfig.copy(numConfigs = Some(numConfigs)))
+            .getOrElse(baseConfig)
 
           fileSystem = new DefaultFileSystem()
           templateService = new TemplateService(finalConfig, fileSystem)
@@ -98,13 +88,13 @@ object ConfigServerApp
           labServerRoute = Http4sServerInterpreter[IO]().toRoutes(
             Endpoints.labServerEndpoint.serverLogic {
               case (remoteAddress, limit) =>
-                templateService.getLabServerConfig(remoteAddress, limit)
+                templateService.getConfig("lab_server", remoteAddress, limit)
             }
           )
           defaultRoute = Http4sServerInterpreter[IO]().toRoutes(
             Endpoints.defaultEndpoint.serverLogic {
               case (remoteAddress, limit) =>
-                templateService.getDefaultConfig(remoteAddress, limit)
+                templateService.getConfig("default", remoteAddress, limit)
             }
           )
           privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(

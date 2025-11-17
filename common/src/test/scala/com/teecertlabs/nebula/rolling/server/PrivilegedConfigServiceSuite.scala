@@ -15,7 +15,8 @@ class PrivilegedConfigServiceSuite extends CatsEffectSuite {
   // Mock TemplateService for testing
   class MockTemplateService(config: ConfigServerConfig, fileSystem: FileSystem)
       extends TemplateService(config, fileSystem) {
-    override def getDefaultConfig(
+    override def getConfig(
+        templateName: String,
         clientIp: Option[java.net.InetSocketAddress],
         limit: Option[Int]
     ): IO[Either[HttpError, String]] =
@@ -30,7 +31,7 @@ class PrivilegedConfigServiceSuite extends CatsEffectSuite {
   val mockConfig = ConfigServerConfig(
     host = "localhost",
     port = 8080,
-    templatePath = "/tmp/template.yaml",
+    templatesDir = "/tmp/templates",
     configDir = "/tmp/configs",
     pkiKeyPath = "/tmp/pki.key",
     labServerInboundGroups = List.empty,

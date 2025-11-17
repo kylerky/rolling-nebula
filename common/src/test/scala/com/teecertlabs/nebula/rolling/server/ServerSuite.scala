@@ -14,7 +14,7 @@ class ServerSuite extends CatsEffectSuite {
   val config = ConfigServerConfig(
     host = "localhost",
     port = 8080,
-    templatePath = "",
+    templatesDir = "",
     pkiKeyPath = "",
     configDir = "configs",
     labServerInboundGroups = List.empty,
@@ -32,7 +32,8 @@ class ServerSuite extends CatsEffectSuite {
     }
     // Create a mock TemplateService that uses the mock FileSystem
     val mockTemplateService = new TemplateService(config, fileSystem) {
-      override def getDefaultConfig(
+      override def getConfig(
+          templateName: String,
           clientIp: Option[java.net.InetSocketAddress],
           limit: Option[Int]
       ): IO[Either[HttpError, String]] =
@@ -81,7 +82,8 @@ class ServerSuite extends CatsEffectSuite {
     }
     // Create a mock TemplateService that uses the mock FileSystem
     val mockTemplateService = new TemplateService(config, fileSystem) {
-      override def getDefaultConfig(
+      override def getConfig(
+          templateName: String,
           clientIp: Option[java.net.InetSocketAddress],
           limit: Option[Int]
       ): IO[Either[HttpError, String]] =
@@ -129,7 +131,8 @@ class ServerSuite extends CatsEffectSuite {
     }
     // Create a mock TemplateService that uses the mock FileSystem
     val mockTemplateService = new TemplateService(config, fileSystem) {
-      override def getDefaultConfig(
+      override def getConfig(
+          templateName: String,
           clientIp: Option[java.net.InetSocketAddress],
           limit: Option[Int]
       ): IO[Either[HttpError, String]] =

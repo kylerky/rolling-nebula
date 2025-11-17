@@ -14,11 +14,13 @@ listen:
 punchy: true
 
 firewall:
-  # Default firewall rules - will be overridden by endpoint logic
   inbound:
-    - port: 4242
-      proto: udp
+    - proto: icmp
+      port: any
       host: any
+    - proto: any
+      groups:
+        - default-group
   outbound:
     - port: any
       proto: any

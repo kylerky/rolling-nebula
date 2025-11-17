@@ -1,0 +1,24 @@
+# Base Nebula Configuration Template
+pki:
+  ca: /etc/nebula/ca.crt
+  cert: /etc/nebula/host.crt
+  key: /etc/nebula/host.key
+
+static_host_map:
+  # This will be dynamically populated
+
+listen:
+  host: 0.0.0.0
+  port: 4242
+
+punchy: true
+
+firewall:
+  inbound:
+    - proto: icmp
+      port: any
+      host: any
+  outbound:
+    - port: any
+      proto: any
+      host: any

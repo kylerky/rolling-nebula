@@ -19,7 +19,8 @@ class PrivilegedConfigService(
         ipFromPath,
         0
       ) // Port doesn't matter for IP extraction
-      templateService.getDefaultConfig(
+      templateService.getConfig(
+        "default",
         Some(ipSocketAddress),
         None
       ) // Assuming 'default' firewall type and no limit

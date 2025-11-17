@@ -16,23 +16,8 @@ import java.net.InetSocketAddress
 class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
   implicit val logger: Logger[IO] = Slf4jLogger.getLogger[IO]
 
-  private val templateFile = Path(config.templatePath)
+  private val templatesDir = Path(config.templatesDir)
   private val baseConfigDir = Path(config.configDir)
-
-  private def loadTemplate: IO[Json] =
-    fileSystem
-      .read(config.templatePath)
-      .flatMap(content =>
-        IO.fromEither(
-          parser
-            .parse(content)
-            .leftMap(err =>
-              new RuntimeException(
-                s"Failed to parse YAML template: ${err.getMessage}"
-              )
-            )
-        )
-      )
 
   private def getLatestConfigDirs(limit: Option[Int]): Stream[IO, Path] = {
     val effectiveLimit = limit match {
@@ -80,80 +65,55 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
       .evalMap(path => fileSystem.read(path.toString))
       .intersperse("\n")
 
-  private def generateConfig(
-      clientIpStr: String,
-      firewallType: String,
-      limit: Option[Int]
-  ): IO[String] = {
-    val latestDirsStream = getLatestConfigDirs(limit)
-    for {
-      (caCerts, hostCerts, baseJson) <- (
-        streamCertContents(latestDirsStream, Path("ca.crt")).compile.string,
-        streamCertContents(
-          latestDirsStream,
-          Path("certs") / s"$clientIpStr.crt"
-        ).compile.string,
-        loadTemplate
-      ).parTupled
-      _ <-
-        if (hostCerts.isEmpty)
-          logger.warn(s"No certificates found for IP: $clientIpStr")
-        else IO.unit
-
-      icmpRule = Json.obj(
-        "proto" -> Json.fromString("icmp"),
-        "port" -> Json.fromString("any"),
-        "host" -> Json.fromString("any")
-      )
-
-      firewallJson = firewallType match {
-        case "lab_server" =>
-          val groupRule = Json.obj(
-            "proto" -> Json.fromString("any"),
-            "groups" -> Json.fromValues(
-              config.labServerInboundGroups.map(Json.fromString)
-            )
-          )
-          Json.obj("inbound" -> Json.arr(icmpRule, groupRule))
-        case "default" =>
-          Json.obj("inbound" -> Json.arr(icmpRule))
-      }
-
-      outboundFirewall = Json.obj(
-        "outbound" -> Json.arr(
-          Json.obj(
-            "port" -> Json.fromString("any"),
-            "proto" -> Json.fromString("any"),
-            "host" -> Json.fromString("any")
-          )
-        )
-      )
-
-      pkiJson = Json.obj(
-        "pki" -> Json.obj(
-          "ca" -> Json.fromString(caCerts),
-          "cert" -> Json.fromString(hostCerts),
-          "key" -> Json.fromString(config.pkiKeyPath)
-        )
-      )
-
-      finalJson = baseJson
-        .deepMerge(pkiJson)
-        .deepMerge(firewallJson)
-        .deepMerge(outboundFirewall)
-    } yield printer.print(finalJson)
-  }
-
-  private def processRequest(
+  def getConfig(
+      templateName: String,
       clientIp: Option[InetSocketAddress],
-      firewallType: String,
       limit: Option[Int]
   ): IO[Either[HttpError, String]] = {
     clientIp.map(
       _.getAddress.getHostAddress
     ) match {
       case Some(ip) =>
-        generateConfig(ip, firewallType, limit).attempt
+        val latestDirsStream = getLatestConfigDirs(limit)
+        val templateFilePath = templatesDir / s"$templateName.yaml"
+
+        (for {
+          (caCerts, hostCerts, baseJson) <- (
+            streamCertContents(latestDirsStream, Path("ca.crt")).compile.string,
+            streamCertContents(
+              latestDirsStream,
+              Path("certs") / s"$ip.crt"
+            ).compile.string,
+            fileSystem
+              .read(templateFilePath.toString)
+              .flatMap(content =>
+                IO.fromEither(
+                  parser
+                    .parse(content)
+                    .leftMap(err =>
+                      new RuntimeException(
+                        s"Failed to parse YAML template '$templateName': ${err.getMessage}"
+                      )
+                    )
+                )
+              )
+          ).parTupled
+          _ <-
+            if (hostCerts.isEmpty)
+              logger.warn(s"No certificates found for IP: $ip")
+            else IO.unit
+
+          pkiJson = Json.obj(
+            "pki" -> Json.obj(
+              "ca" -> Json.fromString(caCerts),
+              "cert" -> Json.fromString(hostCerts),
+              "key" -> Json.fromString(config.pkiKeyPath)
+            )
+          )
+
+          finalJson = baseJson
+            .deepMerge(pkiJson)
+        } yield printer.print(finalJson)).attempt
           .map(
             _.leftMap(e => HttpError.InternalServerError(e.getMessage))
           )
@@ -166,17 +126,4 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
           )
         )
     }
-  }
-
-  def getLabServerConfig(
-      clientIp: Option[InetSocketAddress],
-      limit: Option[Int]
-  ): IO[Either[HttpError, String]] =
-    processRequest(clientIp, "lab_server", limit)
-
-  def getDefaultConfig(
-      clientIp: Option[InetSocketAddress],
-      limit: Option[Int]
-  ): IO[Either[HttpError, String]] =
-    processRequest(clientIp, "default", limit)
-}
+  }}
