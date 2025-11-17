@@ -149,11 +149,14 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
       firewallType: String,
       limit: Option[Int]
   ): IO[Either[HttpError, String]] = {
-    clientIp.map(_.getAddress.getHostAddress) match {
+    clientIp.map(
+      _.getAddress.getHostAddress
+    ) match {
       case Some(ip) =>
-        generateConfig(ip, firewallType, limit).attempt.map(
-          _.leftMap(e => HttpError.InternalServerError(e.getMessage))
-        )
+        generateConfig(ip, firewallType, limit).attempt
+          .map(
+            _.leftMap(e => HttpError.InternalServerError(e.getMessage))
+          )
       case None =>
         IO.pure(
           Left(

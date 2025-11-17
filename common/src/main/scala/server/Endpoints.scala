@@ -11,9 +11,12 @@ import cats.implicits._ // Added for Either.catchNonFatal
 
 object Endpoints {
 
-  implicit val inetAddressCodec: Codec[String, java.net.InetAddress, CodecFormat.TextPlain] =
+  implicit val inetAddressCodec
+      : Codec[String, java.net.InetAddress, CodecFormat.TextPlain] =
     Codec.string.mapEither { s =>
-      Either.catchNonFatal(java.net.InetAddress.getByName(s)).leftMap(e => s"Invalid IP address: ${e.getMessage}")
+      Either
+        .catchNonFatal(java.net.InetAddress.getByName(s))
+        .leftMap(e => s"Invalid IP address: ${e.getMessage}")
     }(_.getHostAddress)
 
   // Base endpoint definition
