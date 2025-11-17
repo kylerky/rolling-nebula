@@ -1,6 +1,7 @@
 package com.teecertlabs.nebula.rolling
 
 import cats.effect.IO
+import cats.implicits._
 import fs2.io.file.{Files, Path}
 import scala.sys.process._
 import java.time.LocalDate
@@ -30,7 +31,7 @@ object NebulaCert {
   def sign(
       name: String,
       inPub: Path,
-      ip: String,
+      networks: List[String],
       groups: List[String],
       caCrt: Path,
       caKey: Path,
@@ -44,8 +45,8 @@ object NebulaCert {
       name,
       "-in-pub",
       inPub.toString,
-      "-ip",
-      ip,
+      "-networks",
+      networks.mkString(","),
       "-groups",
       groups.mkString(","),
       "-ca-crt",
@@ -74,8 +75,12 @@ object NebulaCert {
     val hostName = pubKey.fileName.toString.stripSuffix(".pub")
     val certsDir = outputDir / "certs"
     val certFile = certsDir / s"$hostName.crt"
-    val ipWithoutCidr = hostConfig.ip.split('/').head // Remove CIDR suffix
-    val linkFile = certsDir / s"$ipWithoutCidr.crt"
+
+    val createLinks = hostConfig.networks.traverse_ { network =>
+      val ipWithoutCidr = network.split('/').head
+      val linkFile = certsDir / s"$ipWithoutCidr.crt"
+      Files[IO].createSymbolicLink(linkFile, Path(certFile.fileName.toString))
+    }
 
     for {
       _ <- Files[IO].createDirectories(certsDir)
@@ -83,7 +88,7 @@ object NebulaCert {
         val command = sign(
           hostConfig.name,
           pubKey,
-          hostConfig.ip,
+          hostConfig.networks,
           hostConfig.groups,
           caCrt,
           caKey,
@@ -93,10 +98,7 @@ object NebulaCert {
         val result = command.!!
         println(s"Signing result for $hostName: $result")
       }
-      _ <- Files[IO].createSymbolicLink(
-        linkFile,
-        Path(certFile.fileName.toString)
-      )
+      _ <- createLinks
     } yield ()
   }
 }
