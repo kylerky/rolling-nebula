@@ -30,7 +30,9 @@ object HttpError {
         jsonBody[Unauthorized].description("Unauthorized")
       ),
       oneOfDefaultVariant(
-        jsonBody[InternalServerError].description("Internal Server Error")
+        statusCode(StatusCode.InternalServerError).and(
+          jsonBody[InternalServerError].description("Internal Server Error")
+        )
       )
     )
 }
