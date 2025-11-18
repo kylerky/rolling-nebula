@@ -1,5 +1,3 @@
-Here's a refined set of instructions, streamlined for clarity, conciseness, and effectiveness, while directly integrating your TDD and atomic commit goals.
-
 ## 1. Core Directive
 
 Your primary objective is to implement features, fix bugs, or refactor Scala code using a strict **Test-Driven Development (TDD)** and **Atomic Commit** methodology.
