@@ -13,7 +13,8 @@ class TemplateServiceSuite extends CatsEffectSuite {
     override def read(path: String): IO[String] =
       IO.pure(s"Mock content for $path")
     override def list(path: Path): Stream[IO, Path] = Stream.empty
-    override def exists(path: Path): IO[Boolean] = IO.pure(false)
+    override def exists(path: Path): IO[Boolean] = IO.pure(true)
+    override def validatePath(path: Path, basePath: Path): IO[Unit] = IO.unit
   }
 
   test("getConfig should return a valid YAML configuration for default template") {

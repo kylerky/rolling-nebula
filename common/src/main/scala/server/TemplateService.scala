@@ -23,39 +23,35 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
   private val baseConfigDir = Path(config.configDir)
 
   def getTemplate(templateName: String): IO[Either[HttpError, String]] = {
-    def getRealPath(p: Path): IO[Either[HttpError, java.nio.file.Path]] =
-      IO.blocking(p.toNioPath.toRealPath()).attempt.map {
-        case Right(path)                  => Right(path)
-        case Left(_: NoSuchFileException) =>
-          Left(HttpError.NotFound(s"Template '$templateName' not found."))
-        case Left(e) =>
-          Left(
-            HttpError.InternalServerError(
-              s"Could not resolve path: ${e.getMessage}"
-            )
-          )
-      }
+    if (
+      templateName.contains("..") || templateName.contains("/") || templateName
+        .contains("\\")
+    ) {
+      return IO.pure(Left(HttpError.NotFound("Invalid template name provided.")))
+    }
+
+    val requestedPath = templatesDir / s"$templateName.yaml"
 
     val result: EitherT[IO, HttpError, String] = for {
+      exists <- EitherT.right(fileSystem.exists(requestedPath))
       _ <- EitherT.cond[IO](
-        !templateName.contains("..") && !templateName.contains(
-          "/"
-        ) && !templateName
-          .contains("\\"),
+        exists,
         (),
-        HttpError.NotFound("Invalid template name provided.")
+        HttpError.NotFound(s"Template '$templateName' not found.")
       )
-      requestedPath = templatesDir / s"$templateName.yaml"
-      realTemplatesDir <- EitherT(getRealPath(templatesDir))
-      realRequestedPath <- EitherT(getRealPath(requestedPath))
-      _ <- EitherT.cond[IO](
-        realRequestedPath.startsWith(realTemplatesDir),
-        (),
-        HttpError.NotFound("Invalid template name (path traversal attempt).")
+      _ <- EitherT(
+        fileSystem
+          .validatePath(requestedPath, templatesDir)
+          .map(_ => Right(()))
+          .handleErrorWith(e =>
+            IO.pure(
+              Left(
+                HttpError.NotFound("Invalid template name (path traversal attempt).")
+              )
+            )
+          )
       )
-      content <- EitherT(
-        fileSystem.read(requestedPath.toString).map(Right(_))
-      )
+      content <- EitherT.right(fileSystem.read(requestedPath.toString))
     } yield content
     result.value
   }
@@ -112,87 +108,69 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
       limit: Option[Int],
       allowInboundGroups: Option[List[String]]
   ): IO[Either[HttpError, String]] = {
-    clientIp.map(
-      _.getAddress.getHostAddress
-    ) match {
-      case Some(ip) =>
-        val latestDirsStream = getLatestConfigDirs(limit)
-        val templateFilePath = templatesDir / s"$templateName.yaml"
-
-        (for {
-          (caCerts, hostCerts, baseJson) <- (
-            streamCertContents(latestDirsStream, Path("ca.crt")).compile.string,
-            streamCertContents(
-              latestDirsStream,
-              Path("certs") / s"$ip.crt"
-            ).compile.string,
-            fileSystem
-              .read(templateFilePath.toString)
-              .flatMap(content =>
-                IO.fromEither(
-                  parser
-                    .parse(content)
-                    .leftMap(err =>
-                      new RuntimeException(
-                        s"Failed to parse YAML template '$templateName': ${err.getMessage}"
-                      )
-                    )
-                )
-              )
-          ).parTupled
-          _ <-
-            if (hostCerts.isEmpty)
-              logger.warn(s"No certificates found for IP: $ip")
-            else IO.unit
-
-          // Add dynamic firewall rules
-          jsonWithFirewallRules = allowInboundGroups.getOrElse(
-            List.empty
-          ) match {
-            case Nil    => baseJson
-            case groups =>
-              val newRules = groups.map { groupName =>
-                Json.obj(
-                  "port" -> Json.fromString("any"),
-                  "proto" -> Json.fromString("any"),
-                  "groups" -> Json.fromValues(List(Json.fromString(groupName)))
-                )
-              }
-
-              baseJson.hcursor
-                .downField("firewall")
-                .downField("inbound")
-                .withFocus(inbound =>
-                  Json.fromValues(
-                    inbound.asArray.getOrElse(Vector.empty) ++ newRules
-                  )
-                )
-                .top
-                .getOrElse(baseJson)
-          }
-
-          pkiJson = Json.obj(
-            "pki" -> Json.obj(
-              "ca" -> Json.fromString(caCerts),
-              "cert" -> Json.fromString(hostCerts),
-              "key" -> Json.fromString(config.pkiKeyPath)
-            )
-          )
-
-          finalJson = jsonWithFirewallRules
-            .deepMerge(pkiJson)
-        } yield printer.print(finalJson)).attempt
-          .map(
-            _.leftMap(e => HttpError.InternalServerError(e.getMessage))
-          )
-      case None =>
-        IO.pure(
-          Left(
+    val result: EitherT[IO, HttpError, String] = for {
+      ip <- EitherT.fromOption(
+        clientIp.map(_.getAddress.getHostAddress),
+        HttpError.InternalServerError("Could not determine client IP address.")
+      )
+      templateContent <- EitherT(getTemplate(templateName))
+      baseJson <- EitherT.fromEither[IO](
+        parser
+          .parse(templateContent)
+          .leftMap(err =>
             HttpError.InternalServerError(
-              "Could not determine client IP address."
+              s"Failed to parse YAML template '$templateName': ${err.getMessage}"
             )
           )
+      )
+      latestDirsStream = getLatestConfigDirs(limit)
+      (caCerts, hostCerts) <- EitherT.right(
+        (
+          streamCertContents(latestDirsStream, Path("ca.crt")).compile.string,
+          streamCertContents(
+            latestDirsStream,
+            Path("certs") / s"$ip.crt"
+          ).compile.string
+        ).parTupled
+      )
+      _ <- EitherT.right(
+        if (hostCerts.isEmpty)
+          logger.warn(s"No certificates found for IP: $ip")
+        else IO.unit
+      )
+      jsonWithFirewallRules = allowInboundGroups.getOrElse(
+        List.empty
+      ) match {
+        case Nil    => baseJson
+        case groups =>
+          val newRules = groups.map { groupName =>
+            Json.obj(
+              "port" -> Json.fromString("any"),
+              "proto" -> Json.fromString("any"),
+              "groups" -> Json.fromValues(List(Json.fromString(groupName)))
+            )
+          }
+          baseJson.hcursor
+            .downField("firewall")
+            .downField("inbound")
+            .withFocus(inbound =>
+              Json.fromValues(
+                inbound.asArray.getOrElse(Vector.empty) ++ newRules
+              )
+            )
+            .top
+            .getOrElse(baseJson)
+      }
+      pkiJson = Json.obj(
+        "pki" -> Json.obj(
+          "ca" -> Json.fromString(caCerts),
+          "cert" -> Json.fromString(hostCerts),
+          "key" -> Json.fromString(config.pkiKeyPath)
         )
-    }
+      )
+      finalJson = jsonWithFirewallRules
+        .deepMerge(pkiJson)
+    } yield printer.print(finalJson)
+    result.value
   }
 }

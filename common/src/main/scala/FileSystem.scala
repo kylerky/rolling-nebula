@@ -11,6 +11,7 @@ trait FileSystem {
   def read(path: String): IO[String]
   def list(path: Path): Stream[IO, Path]
   def exists(path: Path): IO[Boolean]
+  def validatePath(path: Path, basePath: Path): IO[Unit]
 }
 
 object FileSystem {
@@ -54,4 +55,16 @@ class DefaultFileSystem extends FileSystem {
 
   def exists(path: Path): IO[Boolean] =
     Files[IO].exists(path)
+
+  def validatePath(path: Path, basePath: Path): IO[Unit] =
+    for {
+      realBasePath <- IO.blocking(basePath.toNioPath.toRealPath())
+      realPath <- IO.blocking(path.toNioPath.toRealPath())
+      _ <-
+        if (realPath.startsWith(realBasePath)) IO.unit
+        else
+          IO.raiseError(
+            new IllegalArgumentException("Path traversal attempt detected")
+          )
+    } yield ()
 }
