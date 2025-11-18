@@ -50,7 +50,6 @@ firewall:
       templatesDir = "/tmp/templates",
       configDir = "/tmp/configs",
       pkiKeyPath = "/tmp/pki.key",
-      labServerInboundGroups = List.empty,
       privilegedIps = List.empty,
       numConfigs = Some(5)
     )
@@ -105,7 +104,6 @@ firewall:
       templatesDir = "/tmp/templates",
       configDir = "/tmp/configs",
       pkiKeyPath = "/tmp/pki.key",
-      labServerInboundGroups = List.empty,
       privilegedIps = List.empty,
       numConfigs = Some(5)
     )
@@ -152,7 +150,6 @@ firewall:
       templatesDir = "/tmp/templates",
       configDir = "/tmp/configs",
       pkiKeyPath = "/tmp/pki.key",
-      labServerInboundGroups = List.empty,
       privilegedIps = List.empty,
       numConfigs = Some(5)
     )

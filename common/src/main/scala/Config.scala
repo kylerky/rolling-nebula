@@ -28,7 +28,6 @@ case class ConfigServerConfig(
     templatesDir: String,
     pkiKeyPath: String,
     configDir: String,
-    labServerInboundGroups: List[String],
     privilegedIps: List[String],
     numConfigs: Option[Int]
 )

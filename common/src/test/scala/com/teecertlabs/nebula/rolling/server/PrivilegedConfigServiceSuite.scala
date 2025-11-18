@@ -34,7 +34,6 @@ class PrivilegedConfigServiceSuite extends CatsEffectSuite {
     templatesDir = "/tmp/templates",
     configDir = "/tmp/configs",
     pkiKeyPath = "/tmp/pki.key",
-    labServerInboundGroups = List.empty,
     privilegedIps = List("127.0.0.1"), // Add a privileged IP for testing Auth
     numConfigs = Some(5)
   )
