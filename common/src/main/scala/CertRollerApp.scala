@@ -38,24 +38,27 @@ object CertRollerApp
         _ <- logger.info(s"Created temporary directory: $tempDir")
         _ <- NebulaCert.generateCA(config.caName, tempDir)
         _ <- logger.info("Generated CA certificate and key.")
-        pubKeyFiles <- FileSystem.getPublicKeyFiles(pubDir).compile.toList
-        _ <- pubKeyFiles.traverse_ { pubKeyPath =>
-          val hostName = pubKeyPath.fileName.toString.stripSuffix(".pub")
-          config.hosts.get(hostName) match {
-            case Some(hostConfig) =>
-              NebulaCert.signHostKey(
-                caCrt = tempDir / "ca.crt",
-                caKey = tempDir / "ca.key",
-                pubKey = pubKeyPath,
-                hostConfig = hostConfig,
-                outputDir = tempDir
-              ) *> logger.info(s"Signed certificate for $hostName.")
-            case None =>
-              logger.warn(
-                s"No configuration found for host '$hostName'. Skipping."
-              )
+        pubKeyFiles = FileSystem.getPublicKeyFiles(pubDir)
+        _ <- pubKeyFiles
+          .evalMap { pubKeyPath =>
+            val hostName = pubKeyPath.fileName.toString.stripSuffix(".pub")
+            config.hosts.get(hostName) match {
+              case Some(hostConfig) =>
+                NebulaCert.signHostKey(
+                  caCrt = tempDir / "ca.crt",
+                  caKey = tempDir / "ca.key",
+                  pubKey = pubKeyPath,
+                  hostConfig = hostConfig,
+                  outputDir = tempDir
+                ) *> logger.info(s"Signed certificate for $hostName.")
+              case None =>
+                logger.warn(
+                  s"No configuration found for host '$hostName'. Skipping."
+                )
+            }
           }
-        }
+          .compile
+          .drain
         timestamp <- FileSystem.getTimestamp
         finalOutputDir = FileSystem.getOutputDirPath(baseDir, timestamp)
         _ <- FileSystem.renameDir(tempDir, finalOutputDir)
