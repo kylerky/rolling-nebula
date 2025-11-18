@@ -1,116 +1,63 @@
-# Project: rolling nebula
+Here's a refined set of instructions, streamlined for clarity, conciseness, and effectiveness, while directly integrating your TDD and atomic commit goals.
 
-# General Instructions
-- When you generate new Scala code, follow the existing coding style.
-- Prefer functional programming paradigms where appropriate. Prefer streams
-  where appropriate.
-- Please break down the implementation into pieces and follow the atomic commit
-  instructions below. Commit the code as you go.
+## 1. Core Directive
 
-# Atomic Commit Instructions
+Your primary objective is to implement features, fix bugs, or refactor Scala code using a strict **Test-Driven Development (TDD)** and **Atomic Commit** methodology.
 
-## Commit Content
+**You must not write any production code until a corresponding failing test exists.**
 
-* **One Logical Change:** Each commit must encapsulate exactly one logical unit
-  of change. This can be a single bug fix, a new feature, or a refactor, but it
-  should not be multiple.
-* **Do Not Mix Concerns:** Never bundle unrelated changes. For example, do not
-  mix a feature implementation with code formatting (style) fixes, or a bug fix
-  with a refactor.
-* **Maintain a Working State:** The codebase must be in a complete, working
-  state after the commit. The application should build successfully. While not
-  all tests may pass, your changes should ensure that as many tests as possible
-  are passing.
+## 2. The TDD & Commit Workflow
 
-## Commit Message
+You must follow this exact cycle for every logical change. This workflow *is* the atomic commit process.
 
-* **Explain "Why":** The commit message must be descriptive and focus on *why*
-  the change was made, not just *what* was changed (the "what" is visible in the
-  code diff).
-* **Use Conventional Commits:** Follow the Conventional Commits specification
-  for a clear and structured message format.
-    * **Format:** `type(scope?): subject`
-    * **Common Types:**
-        * **feat**: A new feature
-        * **fix**: A bug fix
-        * **refactor**: A code change that neither fixes a bug nor adds a
-          feature
-        * **docs**: Documentation-only changes
-        * **style**: Changes that do not affect code meaning (white-space,
-          formatting, etc.)
-        * **test**: Adding new tests or correcting existing ones
-        * **chore**: Maintenance changes (e.g., updating build scripts, tooling)
+### Step 1: RED (Write a Failing Test)
+* Identify the **smallest** piece of required behavior.
+* Write **one** minimal, isolated **unit test** for this behavior.
+* Aggressively **mock or stub** all external dependencies (databases, APIs, etc.).
+* Run tests and confirm the new test **fails** for the expected reason.
 
-# Core Directive: TDD Protocol
+### Step 2: GREEN (Make the Test Pass)
+* Write the **absolute minimum** amount of production code necessary to make the failing test pass.
+* **Do not** add any logic not explicitly required by the test.
+* Run all tests and confirm they **all pass**.
 
-Your primary objective is to implement new features, refactor code, or fix bugs
-using a strict **Test-Driven Development (TDD)** methodology.
+### Step 3: COMMIT (Feature/Fix)
+* Commit *both* the new test code and the new production code *together*.
+* This commit represents **one logical change** (the feature or fix).
+* The commit message **must** follow the `feat:` or `fix:` format (see below).
 
-**Do not** write any production code until a corresponding failing test has been
-written.
+### Step 4: REFACTOR (Clean the Code)
+* **After committing**, look for ways to improve the code you just added (both production and test code).
+* Refactor for clarity, design, or to remove duplication.
+* Ensure all tests continue to pass.
 
-## TDD Workflow
+### Step 5: COMMIT (Refactor)
+* If you made refactoring changes in Step 4, commit them **separately**.
+* This commit **must not** contain any new features or behavioral changes.
+* Use the `refactor:` commit type.
 
-Follow this cycle for *every* piece of new functionality:
+### Step 6: REPEAT
+* Return to Step 1 for the next piece of behavior.
 
-1.  **Analyze Requirement:** Identify the smallest, discrete behavior required.
-2.  **Write Failing Test (Red):**
-    * Author a single, minimal test (unit or integration) that specifies this
-      behavior.
-    * Use descriptive test names (e.g.,
-      `test_user_service_should_reject_invalid_email`).
-    * Assert the *exact* expected outcome.
-    * Run the test and confirm it **fails** (or does not compile) for the
-      correct reason.
-3.  **Write Passing Code (Green):**
-    * Write the *absolute minimum* amount of production code necessary to make
-      the test pass.
-    * **Do not** add extra features or logic not required by the test.
-    * Run all tests and confirm they **pass**.
-4.  **Refactor:**
-    * Improve the design, clarity, and efficiency of the production code (and
-      test code if needed).
-    * Ensure no external behavior is changed.
-    * Re-run all tests to confirm they still pass.
-5.  **Repeat:** Select the next small behavior and return to Step 1.
+## 3. Implementation Guidelines
 
----
+### Commit Message Standard
+You **must** follow the Conventional Commits specification.
 
-## Test Strategy: Unit vs. Integration
+* **Format:** `type(scope?): subject`
+* **Focus:** The message must explain *why* the change was made, not just *what* changed.
+* **Common Types:**
+    * **`feat`**: (Step 3) A new feature.
+    * **`fix`**: (Step 3) A bug fix.
+    * **`refactor`**: (Step 5) Code changes that neither fix a bug nor add a feature.
+    * **`test`**: Only for adding or correcting existing tests *without* production code changes.
+    * **`style`**: Formatting changes only. **Do not** mix these with `feat`, `fix`, or `refactor` commits.
+    * **`chore`**: Build script or tooling updates.
 
-Your testing strategy must be deliberate.
+### Test Strategy
+* **Unit Tests (Default):** Your primary tool. Test a single class/function in **complete isolation**. Mock all dependencies.
+* **Integration Tests (When Necessary):** Use *only* to verify the **interaction** between two or more modules (e.g., service to database) when the connection itself is the risk. Do not re-test logic already covered by unit tests.
 
-### Unit Tests (Default)
-* **Purpose:** To test a single function, method, or class in **complete
-  isolation**.
-* **Rule:** This is your **default** choice.
-* **Action:**
-    * Aggressively **mock or stub** all external dependencies.
-    * This includes: Databases, file systems, network APIs, and other
-      services/modules.
-    * Focus on logic, edge cases, and return values.
-
-### Integration Tests (When Necessary)
-* **Purpose:** To verify the **interaction and data flow** between two or more
-  critical modules (e.g., `ApiService` -> `DatabaseRepository`).
-* **Rule:** Use *only* when the primary risk is the *connection* between
-  components, not the logic within them.
-* **Action:**
-    * **Do not** test logic already covered by unit tests.
-    * Focus on data contracts, request/response flow, and side effects (e.g.,
-      "Was the record actually created in the test database?").
-    * Clearly identify the modules being integrated in the test.
-
----
-
-## Guiding Principles
-
-* **Test First:** Always. No exceptions.
-* **Isolate Failures:** A single bug should ideally cause only one test to fail.
-* **Test Coverage:** Ensure all new code paths (happy path, error conditions,
-  edge cases) are covered by a test.
-* **Analyze Context:** Before starting, scan the existing codebase to understand
-  module boundaries, dependency injection patterns, and existing test
-  conventions (e.g., file naming, test utilities).
-* **Clarity:** Tests must be clear, readable, and serve as documentation for the
-  production code.
+### Scala & Style
+* Follow the existing coding style and conventions.
+* Prefer functional paradigms and streams where appropriate.
