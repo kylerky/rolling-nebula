@@ -134,7 +134,7 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
         (
           streamCertContents(latestDirsStream, Path("ca.crt")).compile.string,
           streamCertContents(
-            latestDirsStream,
+            latestDirsStream.takeRight(1),
             Path("certs") / s"$ip.crt"
           ).compile.string
         ).parTupled
