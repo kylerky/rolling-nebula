@@ -51,14 +51,19 @@ object Endpoints {
         Option[InetSocketAddress],
         Option[List[String]],
         Option[Int],
-        java.net.InetAddress
+        java.net.InetAddress,
+        String
     ),
     HttpError,
     String,
     Any
   ] =
     baseEndpoint.get
-      .in("privileged" / "config" / path[java.net.InetAddress]("ip"))
+      .in(
+        "privileged" / "config" / path[java.net.InetAddress]("ip") / path[String](
+          "templateName"
+        )
+      )
       .out(stringBody)
       .description(
         "Serves host-specific Nebula configuration for privileged access."

@@ -14,7 +14,8 @@ class PrivilegedConfigService(
       remoteAddress: Option[InetSocketAddress],
       allowInboundGroups: Option[List[String]],
       limit: Option[Int],
-      ipFromPath: InetAddress
+      ipFromPath: InetAddress,
+      templateName: String
   ): IO[Either[HttpError, String]] = {
     if (Auth.isPrivilegedIp(config)(remoteAddress)) {
       val ipSocketAddress = new InetSocketAddress(
@@ -22,7 +23,7 @@ class PrivilegedConfigService(
         0
       ) // Port doesn't matter for IP extraction
       templateService.getConfig(
-        "default",
+        templateName,
         Some(ipSocketAddress),
         limit,
         allowInboundGroups

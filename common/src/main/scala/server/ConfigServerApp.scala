@@ -84,12 +84,19 @@ object ConfigServerApp
             )
             val privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
               Endpoints.privilegedConfigEndpoint.serverLogic {
-                case (remoteAddress, allowInboundGroups, limit, ipFromPath) =>
+                case (
+                      remoteAddress,
+                      allowInboundGroups,
+                      limit,
+                      ipFromPath,
+                      templateName
+                    ) =>
                   privilegedConfigService.getConfig(
                     remoteAddress,
                     allowInboundGroups,
                     limit,
-                    ipFromPath
+                    ipFromPath,
+                    templateName
                   )
               }
             )

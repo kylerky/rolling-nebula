@@ -3,10 +3,8 @@ package com.teecertlabs.nebula.rolling.server
 import cats.effect.IO
 import com.teecertlabs.nebula.rolling.{ConfigServerConfig, FileSystem}
 import munit.CatsEffectSuite
-import org.http4s.Method
-import org.http4s.Request
-import org.http4s.Uri
-import org.http4s.dsl.io._
+import org.http4s.{Method, Request, Uri}
+import fs2.io.file.Path
 import java.net.InetAddress
 import com.comcast.ip4s._
 
@@ -48,6 +46,7 @@ class PrivilegedConfigServiceSuite extends CatsEffectSuite {
         path: fs2.io.file.Path
     ): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
     override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(false)
+    override def validatePath(path: Path, basePath: Path): IO[Unit] = IO.unit
   }
   val mockFileSystem = new MockFileSystem()
 
@@ -65,7 +64,7 @@ class PrivilegedConfigServiceSuite extends CatsEffectSuite {
 
     // The route in Endpoints.scala will extract the IP from the path and pass it to the service
     // For this unit test, we directly call the service's getConfig method
-    service.getConfig(privilegedRemoteAddress, None, None, testIp.toInetAddress).flatMap {
+    service.getConfig(privilegedRemoteAddress, None, None, testIp.toInetAddress, "default").flatMap {
       case Right(yamlString) =>
         IO(
           assertEquals(
@@ -91,7 +90,7 @@ class PrivilegedConfigServiceSuite extends CatsEffectSuite {
       Some(new java.net.InetSocketAddress("10.0.0.1", 12345))
 
     service
-      .getConfig(nonPrivilegedRemoteAddress, None, None, testIp.toInetAddress)
+      .getConfig(nonPrivilegedRemoteAddress, None, None, testIp.toInetAddress, "default")
             .flatMap {
               case Right(_) =>
                 IO(fail("Expected Unauthorized error, but got a valid config"))
@@ -124,7 +123,7 @@ class PrivilegedConfigServiceSuite extends CatsEffectSuite {
     val privilegedRemoteAddress =
       Some(new java.net.InetSocketAddress("127.0.0.1", 12345))
 
-    service.getConfig(privilegedRemoteAddress, expectedGroups, None, testIp.toInetAddress).flatMap {
+    service.getConfig(privilegedRemoteAddress, expectedGroups, None, testIp.toInetAddress, "default").flatMap {
       case Right(content) =>
         IO(assertEquals(content, "mock content"))
       case Left(e) =>

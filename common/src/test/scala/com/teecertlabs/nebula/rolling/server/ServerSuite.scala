@@ -29,6 +29,7 @@ class ServerSuite extends CatsEffectSuite {
           path: fs2.io.file.Path
       ): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
       override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(true)
+      override def validatePath(path: fs2.io.file.Path, basePath: fs2.io.file.Path): IO[Unit] = IO.unit
     }
     // Create a mock TemplateService that uses the mock FileSystem
     val mockTemplateService = new TemplateService(config, fileSystem) {
@@ -37,21 +38,35 @@ class ServerSuite extends CatsEffectSuite {
           clientIp: Option[java.net.InetSocketAddress],
           limit: Option[Int],
           allowInboundGroups: Option[List[String]]
-      ): IO[Either[HttpError, String]] =
+      ): IO[Either[HttpError, String]] = {
+        assertEquals(templateName, "default")
         IO.pure(Right("config content")) // Return the expected content
+      }
     }
     val privilegedConfigService =
       new PrivilegedConfigService(config, mockTemplateService)
     val privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
       Endpoints.privilegedConfigEndpoint.serverLogic {
-        case (remoteAddress, allowInboundGroups, limit, ipFromPath) =>
-          privilegedConfigService.getConfig(remoteAddress, allowInboundGroups, limit, ipFromPath)
+        case (
+              remoteAddress,
+              allowInboundGroups,
+              limit,
+              ipFromPath,
+              templateName
+            ) =>
+          privilegedConfigService.getConfig(
+            remoteAddress,
+            allowInboundGroups,
+            limit,
+            ipFromPath,
+            templateName
+          )
       }
     )
 
     val request = Request[IO](
       method = Method.GET,
-      uri = uri"/privileged/config/192.168.1.1"
+      uri = uri"/privileged/config/192.168.1.1/default"
     ).withAttribute(
       Request.Keys.ConnectionInfo,
       Request.Connection(
@@ -80,6 +95,7 @@ class ServerSuite extends CatsEffectSuite {
           path: fs2.io.file.Path
       ): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
       override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(true)
+      override def validatePath(path: fs2.io.file.Path, basePath: fs2.io.file.Path): IO[Unit] = IO.unit
     }
     // Create a mock TemplateService that uses the mock FileSystem
     val mockTemplateService = new TemplateService(config, fileSystem) {
@@ -95,13 +111,25 @@ class ServerSuite extends CatsEffectSuite {
       new PrivilegedConfigService(config, mockTemplateService)
     val privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
       Endpoints.privilegedConfigEndpoint.serverLogic {
-        case (remoteAddress, allowInboundGroups, limit, ipFromPath) =>
-          privilegedConfigService.getConfig(remoteAddress, allowInboundGroups, limit, ipFromPath)
+        case (
+              remoteAddress,
+              allowInboundGroups,
+              limit,
+              ipFromPath,
+              templateName
+            ) =>
+          privilegedConfigService.getConfig(
+            remoteAddress,
+            allowInboundGroups,
+            limit,
+            ipFromPath,
+            templateName
+          )
       }
     )
     val request = Request[IO](
       method = Method.GET,
-      uri = uri"/privileged/config/192.168.1.1"
+      uri = uri"/privileged/config/192.168.1.1/default"
     ).withAttribute(
       Request.Keys.ConnectionInfo,
       Request.Connection(
@@ -130,6 +158,7 @@ class ServerSuite extends CatsEffectSuite {
           path: fs2.io.file.Path
       ): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
       override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(false)
+      override def validatePath(path: fs2.io.file.Path, basePath: fs2.io.file.Path): IO[Unit] = IO.unit
     }
     // Create a mock TemplateService that uses the mock FileSystem
     val mockTemplateService = new TemplateService(config, fileSystem) {
@@ -151,13 +180,25 @@ class ServerSuite extends CatsEffectSuite {
       new PrivilegedConfigService(config, mockTemplateService)
     val privilegedConfigRoute = Http4sServerInterpreter[IO]().toRoutes(
       Endpoints.privilegedConfigEndpoint.serverLogic {
-        case (remoteAddress, allowInboundGroups, limit, ipFromPath) =>
-          privilegedConfigService.getConfig(remoteAddress, allowInboundGroups, limit, ipFromPath)
+        case (
+              remoteAddress,
+              allowInboundGroups,
+              limit,
+              ipFromPath,
+              templateName
+            ) =>
+          privilegedConfigService.getConfig(
+            remoteAddress,
+            allowInboundGroups,
+            limit,
+            ipFromPath,
+            templateName
+          )
       }
     )
     val request = Request[IO](
       method = Method.GET,
-      uri = uri"/privileged/config/192.168.1.1"
+      uri = uri"/privileged/config/192.168.1.1/default"
     ).withAttribute(
       Request.Keys.ConnectionInfo,
       Request.Connection(
@@ -184,6 +225,7 @@ class ServerSuite extends CatsEffectSuite {
           path: fs2.io.file.Path
       ): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
       override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(true)
+      override def validatePath(path: fs2.io.file.Path, basePath: fs2.io.file.Path): IO[Unit] = IO.unit
     }
 
     val mockTemplateService = new TemplateService(config, fileSystem) {
@@ -221,6 +263,7 @@ class ServerSuite extends CatsEffectSuite {
       override def read(path: String): IO[String] = IO.pure("template content")
       override def list(path: fs2.io.file.Path): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
       override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(true)
+      override def validatePath(path: fs2.io.file.Path, basePath: fs2.io.file.Path): IO[Unit] = IO.unit
     }
     val mockTemplateService = new TemplateService(config, fileSystem) {
       override def getConfig(
@@ -263,6 +306,7 @@ class ServerSuite extends CatsEffectSuite {
       override def read(path: String): IO[String] = IO.pure("")
       override def list(path: fs2.io.file.Path): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
       override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(false)
+      override def validatePath(path: fs2.io.file.Path, basePath: fs2.io.file.Path): IO[Unit] = IO.unit
     }
     val mockTemplateService = new TemplateService(config, fileSystem) {
       override def getConfig(
@@ -292,6 +336,7 @@ class ServerSuite extends CatsEffectSuite {
       override def read(path: String): IO[String] = IO.pure("config content")
       override def list(path: fs2.io.file.Path): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
       override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(true)
+      override def validatePath(path: fs2.io.file.Path, basePath: fs2.io.file.Path): IO[Unit] = IO.unit
     }
 
     val mockTemplateService = new TemplateService(config, fileSystem) {
