@@ -32,10 +32,17 @@ object Endpoints {
     .in(extractFromRequest(_.connectionInfo.remote))
     .in(allowInboundGroupsInput)
     .in(query[Option[Int]]("limit"))
+    .in(query[Option[Int]]("host_cert_index"))
 
   // /config/{templateName} endpoint
   val unifiedTemplateEndpoint: PublicEndpoint[
-    (Option[InetSocketAddress], Option[List[String]], Option[Int], String),
+    (
+        Option[InetSocketAddress],
+        Option[List[String]],
+        Option[Int],
+        Option[Int],
+        String
+    ),
     HttpError,
     String,
     Any
@@ -51,6 +58,7 @@ object Endpoints {
         Option[InetSocketAddress],
         Option[List[String]],
         Option[Int],
+        Option[Int],
         java.net.InetAddress,
         String
     ),
@@ -60,9 +68,8 @@ object Endpoints {
   ] =
     baseEndpoint.get
       .in(
-        "privileged" / "config" / path[java.net.InetAddress]("ip") / path[String](
-          "templateName"
-        )
+        "privileged" / "config" / path[java.net.InetAddress]("ip")
+          / path[String]("templateName")
       )
       .out(stringBody)
       .description(

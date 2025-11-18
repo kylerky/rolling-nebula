@@ -17,7 +17,9 @@ class TemplateServiceSuite extends CatsEffectSuite {
     override def validatePath(path: Path, basePath: Path): IO[Unit] = IO.unit
   }
 
-  test("getConfig should return a valid YAML configuration for default template") {
+  test(
+    "getConfig should return a valid YAML configuration for default template"
+  ) {
     val defaultTemplateContent = """
 pki:
   ca: ""
@@ -56,7 +58,7 @@ firewall:
     val service = new TemplateService(mockConfig, mockFileSystem)
     val clientIp = Some(new java.net.InetSocketAddress("1.2.3.4", 12345))
 
-    val result = service.getConfig("default", clientIp, None, None)
+    val result = service.getConfig("default", clientIp, None, None, None)
 
     result.flatMap {
       case Right(yamlString) =>
@@ -112,7 +114,7 @@ firewall:
     val clientIp = Some(new java.net.InetSocketAddress("1.2.3.4", 12345))
     val groups = Some(List("group1", "group2"))
 
-    val result = service.getConfig("default", clientIp, None, groups)
+    val result = service.getConfig("default", clientIp, None, None, groups)
 
     result.flatMap {
       case Right(yamlString) =>
@@ -129,7 +131,9 @@ firewall:
         IO {
           assertEquals(inboundRules.size, 3) // icmp rule + 2 new group rules
           val groupRules =
-            inboundRules.filter(rule => rule.hcursor.downField("groups").succeeded)
+            inboundRules.filter(rule =>
+              rule.hcursor.downField("groups").succeeded
+            )
           assertEquals(groupRules.size, 2)
           val groupNames = groupRules.flatMap(
             _.hcursor.downField("groups").as[List[String]].getOrElse(List.empty)

@@ -29,7 +29,10 @@ class ServerSuite extends CatsEffectSuite {
           path: fs2.io.file.Path
       ): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
       override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(true)
-      override def validatePath(path: fs2.io.file.Path, basePath: fs2.io.file.Path): IO[Unit] = IO.unit
+      override def validatePath(
+          path: fs2.io.file.Path,
+          basePath: fs2.io.file.Path
+      ): IO[Unit] = IO.unit
     }
     // Create a mock TemplateService that uses the mock FileSystem
     val mockTemplateService = new TemplateService(config, fileSystem) {
@@ -37,6 +40,7 @@ class ServerSuite extends CatsEffectSuite {
           templateName: String,
           clientIp: Option[java.net.InetSocketAddress],
           limit: Option[Int],
+          hostCertIndex: Option[Int],
           allowInboundGroups: Option[List[String]]
       ): IO[Either[HttpError, String]] = {
         assertEquals(templateName, "default")
@@ -51,6 +55,7 @@ class ServerSuite extends CatsEffectSuite {
               remoteAddress,
               allowInboundGroups,
               limit,
+              hostCertIndex,
               ipFromPath,
               templateName
             ) =>
@@ -58,6 +63,7 @@ class ServerSuite extends CatsEffectSuite {
             remoteAddress,
             allowInboundGroups,
             limit,
+            hostCertIndex,
             ipFromPath,
             templateName
           )
@@ -95,7 +101,10 @@ class ServerSuite extends CatsEffectSuite {
           path: fs2.io.file.Path
       ): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
       override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(true)
-      override def validatePath(path: fs2.io.file.Path, basePath: fs2.io.file.Path): IO[Unit] = IO.unit
+      override def validatePath(
+          path: fs2.io.file.Path,
+          basePath: fs2.io.file.Path
+      ): IO[Unit] = IO.unit
     }
     // Create a mock TemplateService that uses the mock FileSystem
     val mockTemplateService = new TemplateService(config, fileSystem) {
@@ -103,6 +112,7 @@ class ServerSuite extends CatsEffectSuite {
           templateName: String,
           clientIp: Option[java.net.InetSocketAddress],
           limit: Option[Int],
+          hostCertIndex: Option[Int],
           allowInboundGroups: Option[List[String]]
       ): IO[Either[HttpError, String]] =
         IO.pure(Right("config content")) // Return the expected content
@@ -116,6 +126,7 @@ class ServerSuite extends CatsEffectSuite {
               allowInboundGroups,
               limit,
               ipFromPath,
+              hostCertIndex,
               templateName
             ) =>
           privilegedConfigService.getConfig(
@@ -123,6 +134,7 @@ class ServerSuite extends CatsEffectSuite {
             allowInboundGroups,
             limit,
             ipFromPath,
+            hostCertIndex,
             templateName
           )
       }
@@ -158,7 +170,10 @@ class ServerSuite extends CatsEffectSuite {
           path: fs2.io.file.Path
       ): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
       override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(false)
-      override def validatePath(path: fs2.io.file.Path, basePath: fs2.io.file.Path): IO[Unit] = IO.unit
+      override def validatePath(
+          path: fs2.io.file.Path,
+          basePath: fs2.io.file.Path
+      ): IO[Unit] = IO.unit
     }
     // Create a mock TemplateService that uses the mock FileSystem
     val mockTemplateService = new TemplateService(config, fileSystem) {
@@ -166,6 +181,7 @@ class ServerSuite extends CatsEffectSuite {
           templateName: String,
           clientIp: Option[java.net.InetSocketAddress],
           limit: Option[Int],
+          hostCertIndex: Option[Int],
           allowInboundGroups: Option[List[String]]
       ): IO[Either[HttpError, String]] =
         IO.pure(
@@ -184,6 +200,7 @@ class ServerSuite extends CatsEffectSuite {
               remoteAddress,
               allowInboundGroups,
               limit,
+              hostCertIndex,
               ipFromPath,
               templateName
             ) =>
@@ -191,6 +208,7 @@ class ServerSuite extends CatsEffectSuite {
             remoteAddress,
             allowInboundGroups,
             limit,
+            hostCertIndex,
             ipFromPath,
             templateName
           )
@@ -216,7 +234,7 @@ class ServerSuite extends CatsEffectSuite {
 
     assertIO(response.map(_.status), Status.NotFound)
   }
-  
+
   test("Unified config endpoint should handle allow_inbound_groups parameter") {
     val expectedGroups = List("testgroup1", "testgroup2")
     val fileSystem = new FileSystem {
@@ -225,7 +243,10 @@ class ServerSuite extends CatsEffectSuite {
           path: fs2.io.file.Path
       ): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
       override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(true)
-      override def validatePath(path: fs2.io.file.Path, basePath: fs2.io.file.Path): IO[Unit] = IO.unit
+      override def validatePath(
+          path: fs2.io.file.Path,
+          basePath: fs2.io.file.Path
+      ): IO[Unit] = IO.unit
     }
 
     val mockTemplateService = new TemplateService(config, fileSystem) {
@@ -233,6 +254,7 @@ class ServerSuite extends CatsEffectSuite {
           templateName: String,
           clientIp: Option[java.net.InetSocketAddress],
           limit: Option[Int],
+          hostCertIndex: Option[Int],
           allowInboundGroups: Option[List[String]]
       ): IO[Either[HttpError, String]] = {
         assertEquals(templateName, "default")
@@ -243,8 +265,20 @@ class ServerSuite extends CatsEffectSuite {
 
     val unifiedRoute = Http4sServerInterpreter[IO]().toRoutes(
       Endpoints.unifiedTemplateEndpoint.serverLogic {
-        case (remoteAddress, allowInboundGroups, limit, templateName) =>
-          mockTemplateService.getConfig(templateName, remoteAddress, limit, allowInboundGroups)
+        case (
+              remoteAddress,
+              allowInboundGroups,
+              limit,
+              hostCertIndex,
+              templateName
+            ) =>
+          mockTemplateService.getConfig(
+            templateName,
+            remoteAddress,
+            limit,
+            hostCertIndex,
+            allowInboundGroups
+          )
       }
     )
 
@@ -255,30 +289,52 @@ class ServerSuite extends CatsEffectSuite {
 
     val response = unifiedRoute.orNotFound.run(request)
     assertIO(response.map(_.status), Status.Ok) *>
-    assertIO(response.flatMap(_.as[String]), "config content")
+      assertIO(response.flatMap(_.as[String]), "config content")
   }
 
-  test("Unified template endpoint should return template content for a valid template") {
+  test(
+    "Unified template endpoint should return template content for a valid template"
+  ) {
     val fileSystem = new FileSystem {
       override def read(path: String): IO[String] = IO.pure("template content")
-      override def list(path: fs2.io.file.Path): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
+      override def list(
+          path: fs2.io.file.Path
+      ): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
       override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(true)
-      override def validatePath(path: fs2.io.file.Path, basePath: fs2.io.file.Path): IO[Unit] = IO.unit
+      override def validatePath(
+          path: fs2.io.file.Path,
+          basePath: fs2.io.file.Path
+      ): IO[Unit] = IO.unit
     }
     val mockTemplateService = new TemplateService(config, fileSystem) {
       override def getConfig(
           templateName: String,
           clientIp: Option[java.net.InetSocketAddress],
           limit: Option[Int],
+          hostCertIndex: Option[Int],
           allowInboundGroups: Option[List[String]]
       ): IO[Either[HttpError, String]] =
-        IO.pure(Right("this is the mock content")) // Return the expected content
+        IO.pure(
+          Right("this is the mock content")
+        ) // Return the expected content
     }
 
     val unifiedTemplateRoute = Http4sServerInterpreter[IO]().toRoutes(
       Endpoints.unifiedTemplateEndpoint.serverLogic {
-        case (remoteAddress, allowInboundGroups, limit, templateName) =>
-          mockTemplateService.getConfig(templateName, remoteAddress, limit, allowInboundGroups)
+        case (
+              remoteAddress,
+              allowInboundGroups,
+              limit,
+              hostCertIndex,
+              templateName
+            ) =>
+          mockTemplateService.getConfig(
+            templateName,
+            remoteAddress,
+            limit,
+            hostCertIndex,
+            allowInboundGroups
+          )
       }
     )
 
@@ -301,18 +357,26 @@ class ServerSuite extends CatsEffectSuite {
       assertIO(response.flatMap(_.as[String]), "this is the mock content")
   }
 
-  test("Unified template endpoint should return 404 for path traversal attempt") {
+  test(
+    "Unified template endpoint should return 404 for path traversal attempt"
+  ) {
     val fileSystem = new FileSystem {
       override def read(path: String): IO[String] = IO.pure("")
-      override def list(path: fs2.io.file.Path): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
+      override def list(
+          path: fs2.io.file.Path
+      ): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
       override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(false)
-      override def validatePath(path: fs2.io.file.Path, basePath: fs2.io.file.Path): IO[Unit] = IO.unit
+      override def validatePath(
+          path: fs2.io.file.Path,
+          basePath: fs2.io.file.Path
+      ): IO[Unit] = IO.unit
     }
     val mockTemplateService = new TemplateService(config, fileSystem) {
       override def getConfig(
           templateName: String,
           clientIp: Option[java.net.InetSocketAddress],
           limit: Option[Int],
+          hostCertIndex: Option[Int],
           allowInboundGroups: Option[List[String]]
       ): IO[Either[HttpError, String]] =
         IO.pure(Left(HttpError.NotFound("Invalid template name provided.")))
@@ -320,13 +384,26 @@ class ServerSuite extends CatsEffectSuite {
 
     val unifiedTemplateRoute = Http4sServerInterpreter[IO]().toRoutes(
       Endpoints.unifiedTemplateEndpoint.serverLogic {
-        case (remoteAddress, allowInboundGroups, limit, templateName) =>
-          mockTemplateService.getConfig(templateName, remoteAddress, limit, allowInboundGroups)
+        case (
+              remoteAddress,
+              allowInboundGroups,
+              limit,
+              hostCertIndex,
+              templateName
+            ) =>
+          mockTemplateService.getConfig(
+            templateName,
+            remoteAddress,
+            limit,
+            hostCertIndex,
+            allowInboundGroups
+          )
       }
     )
 
     // URL-encoded "../"
-    val request = Request[IO](method = Method.GET, uri = uri"/config/..%2f..%2fsecret")
+    val request =
+      Request[IO](method = Method.GET, uri = uri"/config/..%2f..%2fsecret")
     val response = unifiedTemplateRoute.orNotFound.run(request)
 
     assertIO(response.map(_.status), Status.NotFound)
@@ -334,9 +411,14 @@ class ServerSuite extends CatsEffectSuite {
   test("Unified config endpoint should handle templateName") {
     val fileSystem = new FileSystem {
       override def read(path: String): IO[String] = IO.pure("config content")
-      override def list(path: fs2.io.file.Path): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
+      override def list(
+          path: fs2.io.file.Path
+      ): fs2.Stream[IO, fs2.io.file.Path] = fs2.Stream.empty
       override def exists(path: fs2.io.file.Path): IO[Boolean] = IO.pure(true)
-      override def validatePath(path: fs2.io.file.Path, basePath: fs2.io.file.Path): IO[Unit] = IO.unit
+      override def validatePath(
+          path: fs2.io.file.Path,
+          basePath: fs2.io.file.Path
+      ): IO[Unit] = IO.unit
     }
 
     val mockTemplateService = new TemplateService(config, fileSystem) {
@@ -344,6 +426,7 @@ class ServerSuite extends CatsEffectSuite {
           templateName: String,
           clientIp: Option[java.net.InetSocketAddress],
           limit: Option[Int],
+          hostCertIndex: Option[Int],
           allowInboundGroups: Option[List[String]]
       ): IO[Either[HttpError, String]] = {
         assertEquals(templateName, "default")
@@ -353,8 +436,20 @@ class ServerSuite extends CatsEffectSuite {
 
     val unifiedRoute = Http4sServerInterpreter[IO]().toRoutes(
       Endpoints.unifiedTemplateEndpoint.serverLogic {
-        case (remoteAddress, allowInboundGroups, limit, templateName) =>
-          mockTemplateService.getConfig(templateName, remoteAddress, limit, allowInboundGroups)
+        case (
+              remoteAddress,
+              allowInboundGroups,
+              limit,
+              hostCertIndex,
+              templateName
+            ) =>
+          mockTemplateService.getConfig(
+            templateName,
+            remoteAddress,
+            limit,
+            hostCertIndex,
+            allowInboundGroups
+          )
       }
     )
 
@@ -364,7 +459,7 @@ class ServerSuite extends CatsEffectSuite {
     )
 
     val response = unifiedRoute.orNotFound.run(request)
-    assertIO(response.map(_.status), Status.Ok) *> 
+    assertIO(response.map(_.status), Status.Ok) *>
       assertIO(response.flatMap(_.as[String]), "mock config content")
   }
 }

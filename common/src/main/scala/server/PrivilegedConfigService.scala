@@ -14,6 +14,7 @@ class PrivilegedConfigService(
       remoteAddress: Option[InetSocketAddress],
       allowInboundGroups: Option[List[String]],
       limit: Option[Int],
+      hostCertIndex: Option[Int],
       ipFromPath: InetAddress,
       templateName: String
   ): IO[Either[HttpError, String]] = {
@@ -26,6 +27,7 @@ class PrivilegedConfigService(
         templateName,
         Some(ipSocketAddress),
         limit,
+        hostCertIndex,
         allowInboundGroups
       )
     } else {

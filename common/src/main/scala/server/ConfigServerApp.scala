@@ -73,11 +73,18 @@ object ConfigServerApp
             // Define Tapir routes
             val unifiedTemplateRoute = Http4sServerInterpreter[IO]().toRoutes(
               Endpoints.unifiedTemplateEndpoint.serverLogic {
-                case (remoteAddress, allowInboundGroups, limit, templateName) =>
+                case (
+                      remoteAddress,
+                      allowInboundGroups,
+                      limit,
+                      hostCertIndex,
+                      templateName
+                    ) =>
                   templateService.getConfig(
                     templateName,
                     remoteAddress,
                     limit,
+                    hostCertIndex,
                     allowInboundGroups
                   )
               }
@@ -88,6 +95,7 @@ object ConfigServerApp
                       remoteAddress,
                       allowInboundGroups,
                       limit,
+                      hostCertIndex,
                       ipFromPath,
                       templateName
                     ) =>
@@ -95,6 +103,7 @@ object ConfigServerApp
                     remoteAddress,
                     allowInboundGroups,
                     limit,
+                    hostCertIndex,
                     ipFromPath,
                     templateName
                   )

@@ -62,8 +62,8 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
     result.value
   }
 
-  private def getLatestConfigDirs(limit: Option[Int]): Stream[IO, Path] = {
-    val effectiveLimit = limit match {
+  private def getEffectiveLimit(limit: Option[Int]): Option[Int] =
+    limit match {
       case Some(0)  => None // 0 means all
       case Some(-1) =>
         config.numConfigs match {
@@ -80,6 +80,7 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
         }
     }
 
+  private def getLatestConfigDirs(limit: Option[Int]): Stream[IO, Path] = {
     Stream
       .eval(
         fileSystem
@@ -89,7 +90,7 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
           .toList
           .map { dirs =>
             val sortedDirs = dirs.sortBy(_.fileName.toString).reverse
-            effectiveLimit match {
+            limit match {
               case Some(n) => sortedDirs.take(n)
               case None    => sortedDirs
             }
@@ -112,8 +113,12 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
       templateName: String,
       clientIp: Option[InetSocketAddress],
       limit: Option[Int],
+      hostCertIndex: Option[Int],
       allowInboundGroups: Option[List[String]]
   ): IO[Either[HttpError, String]] = {
+    val effectiveLimit = getEffectiveLimit(limit)
+    val effectiveIndex =
+      hostCertIndex.orElse { effectiveLimit.map(_ / 2) }.getOrElse(0)
     val result: EitherT[IO, HttpError, String] = for {
       ip <- EitherT.fromOption(
         clientIp.map(_.getAddress.getHostAddress),
@@ -129,12 +134,12 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
             )
           )
       )
-      latestDirsStream = getLatestConfigDirs(limit)
+      latestDirsStream = getLatestConfigDirs(effectiveLimit)
       (caCerts, hostCerts) <- EitherT.right(
         (
           streamCertContents(latestDirsStream, Path("ca.crt")).compile.string,
           streamCertContents(
-            latestDirsStream.takeRight(1),
+            latestDirsStream.take(effectiveIndex + 1).takeRight(1),
             Path("certs") / s"$ip.crt"
           ).compile.string
         ).parTupled
