@@ -8,7 +8,7 @@ import fs2.io.file.{Files, Path}
 import fs2.Stream
 import io.circe.Json
 import io.circe.yaml.parser
-import io.circe.yaml.printer
+import io.circe.yaml.Printer
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import java.net.InetSocketAddress
@@ -22,12 +22,17 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
   private val templatesDir = Path(config.templatesDir)
   private val baseConfigDir = Path(config.configDir)
 
+  private val stableOrderYamlPrinter =
+    Printer.spaces4.copy(preserveOrder = true)
+
   def getTemplate(templateName: String): IO[Either[HttpError, String]] = {
     if (
       templateName.contains("..") || templateName.contains("/") || templateName
         .contains("\\")
     ) {
-      return IO.pure(Left(HttpError.NotFound("Invalid template name provided.")))
+      return IO.pure(
+        Left(HttpError.NotFound("Invalid template name provided."))
+      )
     }
 
     val requestedPath = templatesDir / s"$templateName.yaml"
@@ -46,7 +51,8 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
           .handleErrorWith(e =>
             IO.pure(
               Left(
-                HttpError.NotFound("Invalid template name (path traversal attempt).")
+                HttpError
+                  .NotFound("Invalid template name (path traversal attempt).")
               )
             )
           )
@@ -170,7 +176,9 @@ class TemplateService(config: ConfigServerConfig, fileSystem: FileSystem) {
       )
       finalJson = jsonWithFirewallRules
         .deepMerge(pkiJson)
-    } yield printer.print(finalJson)
+    } yield {
+      stableOrderYamlPrinter.pretty(finalJson)
+    }
     result.value
   }
 }
