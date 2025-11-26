@@ -57,12 +57,12 @@ object NebulaCert {
       outCrt.toString
     )
 
-    val unsafeRoutesCommand = unsafeNetworks
+    val unsafeNetworksCommand = unsafeNetworks
       .filter(_.nonEmpty)
-      .map(routes => Seq("-unsafe-routes", routes.mkString(",")))
+      .map(routes => Seq("-unsafe-networks", routes.mkString(",")))
       .getOrElse(Seq.empty)
 
-    baseCommand ++ unsafeRoutesCommand
+    baseCommand ++ unsafeNetworksCommand
   }
 
   def signHostKey(

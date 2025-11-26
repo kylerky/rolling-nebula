@@ -20,11 +20,11 @@ class NebulaCertSuite extends FunSuite {
     )
 
     val expected =
-      "nebula-cert sign -name test-host -in-pub /keys/test-host.pub -networks 172.16.0.1/16,10.0.0.1/24 -groups group1,group2 -ca-crt /ca/ca.crt -ca-key /ca/ca.key -out-crt /out/test-host.crt -unsafe-routes 10.0.0.0/8,192.168.1.0/24"
+      "nebula-cert sign -name test-host -in-pub /keys/test-host.pub -networks 172.16.0.1/16,10.0.0.1/24 -groups group1,group2 -ca-crt /ca/ca.crt -ca-key /ca/ca.key -out-crt /out/test-host.crt -unsafe-networks 10.0.0.0/8,192.168.1.0/24"
     assertEquals(command.mkString(" "), expected)
   }
 
-  test("sign command should not include -unsafe-routes when not provided") {
+  test("sign command should not include -unsafe-networks when not provided") {
     val networks = List("172.16.0.1/16")
     val command = NebulaCert.sign(
       "test-host",
@@ -42,7 +42,7 @@ class NebulaCertSuite extends FunSuite {
     assertEquals(command.mkString(" "), expected)
   }
 
-  test("sign command should not include -unsafe-routes when list is empty") {
+  test("sign command should not include -unsafe-networks when list is empty") {
     val networks = List("172.16.0.1/16")
     val command = NebulaCert.sign(
       "test-host",
