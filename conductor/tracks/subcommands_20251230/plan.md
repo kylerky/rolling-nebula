@@ -1,0 +1,14 @@
+# Plan: Cert Roller CLI Subcommands & Host Update
+
+## Phase 1: CLI Refactoring (Subcommands)
+- [x] Task: Refactor `CertRollerApp` to use `decline` subcommands. d5180f5
+- [x] Task: Implement `roll` subcommand (identical behavior to current root command). d5180f5
+- [x] Task: Write tests for subcommand parsing in a new `CertRollerAppSuite`. d5180f5
+- [ ] Task: Conductor - User Manual Verification 'CLI Refactoring' (Protocol in workflow.md)
+
+## Phase 2: Implement `update` Subcommand
+- [ ] Task: Implement logic in `FileSystem` or `ConfigLoader` to locate the latest `config_*` directory and its CA files.
+- [ ] Task: Implement the `update` subcommand logic in `CertRollerApp`.
+- [ ] Task: Write unit tests for `update` logic (mocking `NebulaCert` and `FileSystem` where appropriate).
+- [ ] Task: Write integration tests for `update` (verifying full flow using temporary directories).
+- [ ] Task: Conductor - User Manual Verification 'Update Subcommand' (Protocol in workflow.md)
