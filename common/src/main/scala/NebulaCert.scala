@@ -102,3 +102,29 @@ object NebulaCert {
     } yield ()
   }
 }
+
+trait NebulaCertService[F[_]] {
+  def generateCA(baseCaName: String, outputDir: Path): F[Unit]
+  def signHostKey(
+      caCrt: Path,
+      caKey: Path,
+      pubKey: Path,
+      hostConfig: HostConfig,
+      outputDir: Path
+  ): F[Unit]
+}
+
+object NebulaCertService {
+  def live: NebulaCertService[IO] = new NebulaCertService[IO] {
+    def generateCA(baseCaName: String, outputDir: Path): IO[Unit] =
+      NebulaCert.generateCA(baseCaName, outputDir)
+    def signHostKey(
+        caCrt: Path,
+        caKey: Path,
+        pubKey: Path,
+        hostConfig: HostConfig,
+        outputDir: Path
+    ): IO[Unit] =
+      NebulaCert.signHostKey(caCrt, caKey, pubKey, hostConfig, outputDir)
+  }
+}

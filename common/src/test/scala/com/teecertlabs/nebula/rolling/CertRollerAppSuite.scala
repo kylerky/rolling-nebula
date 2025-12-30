@@ -30,4 +30,24 @@ class CertRollerAppSuite extends CatsEffectSuite {
        case Left(_) => () // Success (help/error displayed)
      }
   }
+
+  test("CertRollerApp CLI should accept 'update' subcommand with hostname") {
+    val command = Command("cert-roller", "header")(CertRollerApp.app)
+    val args = List("update", "my-host")
+    
+    command.parse(args) match {
+      case Right(_) => () 
+      case Left(help) => fail(s"Parsing failed: $help")
+    }
+  }
+  
+  test("CertRollerApp CLI should accept 'update' subcommand with hostname and pub-key") {
+    val command = Command("cert-roller", "header")(CertRollerApp.app)
+    val args = List("update", "my-host", "--pub-key", "/tmp/key.pub")
+    
+    command.parse(args) match {
+      case Right(_) => () 
+      case Left(help) => fail(s"Parsing failed: $help")
+    }
+  }
 }

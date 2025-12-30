@@ -12,6 +12,11 @@ trait FileSystem {
   def list(path: Path): Stream[IO, Path]
   def exists(path: Path): IO[Boolean]
   def validatePath(path: Path, basePath: Path): IO[Unit]
+  def createTempDir(baseDir: Path, name: String): IO[Path] = ???
+  def renameDir(from: Path, to: Path): IO[Unit] = ???
+  def getPublicKeyFiles(pubDir: Path): Stream[IO, Path] = ???
+  def getTimestamp: IO[String] = ???
+  def findLatestConfigDirs(baseDir: Path, n: Int): IO[List[Path]] = ???
 }
 
 object FileSystem {
@@ -77,4 +82,19 @@ class DefaultFileSystem extends FileSystem {
             new IllegalArgumentException("Path traversal attempt detected")
           )
     } yield ()
+
+  override def createTempDir(baseDir: Path, name: String): IO[Path] =
+    FileSystem.createTempDir(baseDir, name)
+
+  override def renameDir(from: Path, to: Path): IO[Unit] =
+    FileSystem.renameDir(from, to)
+
+  override def getPublicKeyFiles(pubDir: Path): Stream[IO, Path] =
+    FileSystem.getPublicKeyFiles(pubDir)
+
+  override def getTimestamp: IO[String] =
+    FileSystem.getTimestamp
+
+  override def findLatestConfigDirs(baseDir: Path, n: Int): IO[List[Path]] =
+    FileSystem.findLatestConfigDirs(baseDir, n)
 }
