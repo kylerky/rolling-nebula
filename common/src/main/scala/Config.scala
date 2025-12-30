@@ -18,7 +18,8 @@ case class HostConfig(
 case class CertRollerConfig(
     caName: String,
     pubDir: String,
-    hosts: Map[String, HostConfig]
+    hosts: Map[String, HostConfig],
+    numConfigs: Option[Int]
 )
 
 // Config Server Configuration

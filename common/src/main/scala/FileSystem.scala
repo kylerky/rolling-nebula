@@ -44,6 +44,16 @@ object FileSystem {
       .filter(p => p.fileName.toString.endsWith(pubKeyExtension))
       .evalFilter(p => Files[IO].isDirectory(p).map(!_))
   }
+
+  def findLatestConfigDirs(baseDir: Path, n: Int): IO[List[Path]] = {
+    Files[IO]
+      .list(baseDir)
+      .filter(p => p.fileName.toString.startsWith("config_"))
+      .evalFilter(p => Files[IO].isDirectory(p))
+      .compile
+      .toList
+      .map(_.sortBy(_.fileName.toString).reverse.take(n))
+  }
 }
 
 class DefaultFileSystem extends FileSystem {
