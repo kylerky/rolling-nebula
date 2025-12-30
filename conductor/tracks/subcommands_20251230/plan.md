@@ -8,7 +8,7 @@
 
 ## Phase 2: Implement `update` Subcommand
 - [x] Task: Implement logic in `FileSystem` or `ConfigLoader` to locate the latest `config_*` directory and its CA files. 96b09c1
-- [ ] Task: Implement the `update` subcommand logic in `CertRollerApp`.
-- [ ] Task: Write unit tests for `update` logic (mocking `NebulaCert` and `FileSystem` where appropriate).
+- [x] Task: Implement the `update` subcommand logic in `CertRollerApp`. 4b61c21
+- [x] Task: Write unit tests for `update` logic (mocking `NebulaCert` and `FileSystem` where appropriate). 4b61c21
 - [ ] Task: Write integration tests for `update` (verifying full flow using temporary directories).
 - [ ] Task: Conductor - User Manual Verification 'Update Subcommand' (Protocol in workflow.md)

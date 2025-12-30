@@ -9,7 +9,7 @@ abstract class BaseApp(name: String, header: String)
     extends CommandIOApp(name, header) {
 
   // The logger must be defined by the subclass
-  protected implicit def logger: Logger[IO]
+  protected given logger: Logger[IO]
 
   // Subclasses now implement this instead of `main`
   def app: Opts[IO[ExitCode]]
