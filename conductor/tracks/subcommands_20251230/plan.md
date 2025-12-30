@@ -7,7 +7,7 @@
 - [x] Task: Conductor - User Manual Verification 'CLI Refactoring' (Protocol in workflow.md) 409d4a7
 
 ## Phase 2: Implement `update` Subcommand
-- [ ] Task: Implement logic in `FileSystem` or `ConfigLoader` to locate the latest `config_*` directory and its CA files.
+- [x] Task: Implement logic in `FileSystem` or `ConfigLoader` to locate the latest `config_*` directory and its CA files. 96b09c1
 - [ ] Task: Implement the `update` subcommand logic in `CertRollerApp`.
 - [ ] Task: Write unit tests for `update` logic (mocking `NebulaCert` and `FileSystem` where appropriate).
 - [ ] Task: Write integration tests for `update` (verifying full flow using temporary directories).
